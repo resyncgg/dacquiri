@@ -1,4 +1,4 @@
-use crate::{Grant, Grantable, PrincipalT};
+use crate::{Grant, Grantable, HasGrant, PrincipalT};
 use crate::tests::helpers::grants::add_user::{AddUserToTeam, AddUserToTeamGrant};
 use crate::tests::helpers::{Team, User};
 use crate::tests::helpers::grants::change_name::{ChangeName, ChangeNameGrant};
@@ -30,8 +30,7 @@ fn test() -> Result<(), String> {
 }
 
 fn do_change_name(
-    mut caller: impl ChangeNameGrant
-                + Grantable<User, Team>,
+    mut caller: impl ChangeNameGrant + Grantable<User, Team>,
     name: impl Into<String>,
     team1: Team,
     team2: Team
