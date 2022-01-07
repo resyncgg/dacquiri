@@ -42,9 +42,9 @@ Missing DACquiri? That's *your* error.
 
 ## How it works
 
-DACquiri codifies permissions checks into the type system using a wrapper struct called `GrantElement`. For example, let's imagine you have two permissions called `P1` and `P2`. If you've checked both of these permissions on some `User` object, you might expect to now have a type `GrantElement<P2, GrantElement<P1, User>>`.
+DACquiri codifies permissions checks into the type system using a wrapper struct called `GrantChain`. For example, let's imagine you have two permissions called `P1` and `P2`. If you've checked both of these permissions on some `User` object, you might expect to now have a type `GrantChain<P2, GrantChain<P1, User>>`.
 
-The magic of DACquiri is that it doesn't matter in which order you check permissions, just that you've checked them at some point. Regardless of the order, the outer `GrantElement` will implement both `HasGrant<P1>` as well as `HasGrant<P2>`. This is true for no matter how many grants you add to the chain.
+The magic of DACquiri is that it doesn't matter in which order you check permissions, just that you've checked them at some point. Regardless of the order, the outer `GrantChain` will implement both `HasGrant<P1>` as well as `HasGrant<P2>`. This is true for no matter how many grants you add to the chain.
 
 Grants can be checked with the `try_grant` function where you'll specify which `Grant` you are currently checking. The actual check is performed in the `has_grant` function you must implement when implementing `Grant` on your `PrincipalT`. 
 
@@ -53,6 +53,8 @@ Grants can be checked with the `try_grant` function where you'll specify which `
 Here's a simplistic example of two permissions (`PermissionOne` and `PermissionTwo`) that we'll define as being grantable to all `User` objects (for the sake of this example).
 
 ```rust
+use dacquiri::prelude::*;
+
 impl_principal!(User);
 struct User {
     name: String
@@ -63,25 +65,19 @@ struct PermissionTwo;
 
 impl Grant for PermissionOne {
     type Principal = User;
-    const NAME: &'static str = "PermissionOne";
 
     // give everyone this grant
     fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
-
     fn new_with_resource(_: Self::Resource) -> Self { Self }
-
     fn get_resource(&self) -> &Self::Resource { &() }
 }
 
 impl Grant for PermissionTwo {
     type Principal = User;
-    const NAME: &'static str = "PermissionTwo";
 
     // give everyone this grant
     fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
-
     fn new_with_resource(_: Self::Resource) -> Self { Self }
-
     fn get_resource(&self) -> &Self::Resource { &() }
 }
 
@@ -95,7 +91,7 @@ fn requires_permission_two(caller: &impl HasGrant<PermissionTwo>) {
 
 fn requires_both_permission(
     caller: impl HasGrant<PermissionOne>
-            + HasGrant<PermissionTwo>
+               + HasGrant<PermissionTwo>
 ) {
     println!("The caller must have checked that you had both PermissionOne and PermissionTwo");
 }
