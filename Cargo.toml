@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "A compile-time enforcing DAC authorization library."
@@ -11,8 +11,9 @@ homepage = "https://resync.gg"
 keywords = ["authorization", "dac", "access", "authz", "security"]
 categories = ["authentication"]
 
-
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[dev-dependencies]
+trybuild = "1"
