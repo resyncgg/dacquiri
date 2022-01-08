@@ -3,7 +3,6 @@ pub use crate::grant::{
     Grantable,
     HasGrant
 };
-
 pub use crate::grant_chain::GrantChain;
 pub use crate::principal::PrincipalT;
 

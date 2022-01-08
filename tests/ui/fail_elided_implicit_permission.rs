@@ -1,5 +1,10 @@
 #![feature(generic_arg_infer)]
 
+// In this test case, we're going to check both permission up front
+// but since guarded_function_one will only enforce that we have PermissionOne
+// we'll lose the guarantee that we are granted PermissionTwo.
+// if we fail to recheck PermissionTwo, we'll lead to a compilation error.
+
 use dacquiri::prelude::*;
 
 impl_principal!(User);
@@ -11,7 +16,7 @@ impl Grant for PermissionOne {
 
     fn new_with_resource(_: Self::Resource) -> Self { Self }
     fn get_resource(&self) -> &Self::Resource { &() }
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
+    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), Self::Error> { Ok(()) }
 }
 
 struct PermissionTwo;
@@ -20,16 +25,12 @@ impl Grant for PermissionTwo {
 
     fn new_with_resource(_: Self::Resource) -> Self { Self }
     fn get_resource(&self) -> &Self::Resource { &() }
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
+    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), Self::Error> { Ok(()) }
 }
 
 fn main() {
     let user = User;
 
-    // In this test case, we're going to check both permission up front
-    // but since guarded_function_one will only enforce that we have PermissionOne
-    // we'll lose the guarantee that we are granted PermissionTwo.
-    // if we fail to recheck PermissionTwo, we'll lead to a compilation error.
     let both_grants = user.try_grant::<PermissionOne, _>(())
         .expect("Missing permission one.")
         .try_grant::<PermissionTwo, _>(())

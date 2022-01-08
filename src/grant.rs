@@ -5,12 +5,13 @@ use crate::principal::PrincipalT;
 pub trait Grant<const ID: &'static str = DEFAULT_GRANT_LABEL> {
     type Principal: PrincipalT<Self::Principal>;
     type Resource = ();
+    type Error = ();
 
     fn new_with_resource(resource: Self::Resource) -> Self;
 
     fn get_resource(&self) -> &Self::Resource;
 
-    fn check_grant(principal: &Self::Principal, resource: &Self::Resource) -> Result<(), String>;
+    fn check_grant(principal: &Self::Principal, resource: &Self::Resource) -> Result<(), Self::Error>;
 }
 
 
@@ -19,7 +20,7 @@ pub trait HasGrant<T: Grant<ID>, const ID: &'static str = DEFAULT_GRANT_LABEL>: 
 }
 
 pub trait Grantable<P: PrincipalT<P>, R = ()>: Sized + PrincipalT<P> {
-    fn try_grant<G, const ID: &'static str>(self, resource: R) -> Result<GrantChain<ID, P, R, G, Self>, String>
+    fn try_grant<G, const ID: &'static str>(self, resource: R) -> Result<GrantChain<ID, P, R, G, Self>, G::Error>
         where
             G: Grant<ID, Principal = P, Resource = R>,
     {

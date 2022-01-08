@@ -11,7 +11,7 @@ impl Grant for PermissionOne {
 
     fn new_with_resource(_: Self::Resource) -> Self { Self }
     fn get_resource(&self) -> &Self::Resource { &() }
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
+    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), Self::Error> { Ok(()) }
 }
 
 fn main() {

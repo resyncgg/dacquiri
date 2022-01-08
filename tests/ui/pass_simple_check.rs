@@ -14,24 +14,15 @@ impl Grant for PermissionOne {
     fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), Self::Error> { Ok(()) }
 }
 
-struct PermissionTwo;
-impl Grant for PermissionTwo {
-    type Principal = User;
-
-    fn new_with_resource(_: Self::Resource) -> Self { Self }
-    fn get_resource(&self) -> &Self::Resource { &() }
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), Self::Error> { Ok(()) }
-}
-
 fn main() {
     let user = User;
 
     let grant = user.try_grant::<PermissionOne, _>(())
-        .expect("Missing permission one.");
+        .unwrap();
 
     guarded_function(grant);
 }
 
-fn guarded_function(caller: impl HasGrant<PermissionOne> + HasGrant<PermissionTwo>) {
-    println!("User has both permission one and permission two");
+fn guarded_function(_: impl HasGrant<PermissionOne>) {
+    println!("User has PermissionOne grant.");
 }

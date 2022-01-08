@@ -27,11 +27,13 @@ fn main() {
     let user = User;
 
     let grant = user.try_grant::<PermissionOne, _>(())
-        .expect("Missing permission one.");
+        .unwrap()
+        .try_grant::<PermissionTwo, _>(())
+        .unwrap();
 
     guarded_function(grant);
 }
 
-fn guarded_function(caller: impl HasGrant<PermissionOne> + HasGrant<PermissionTwo>) {
+fn guarded_function(_: impl HasGrant<PermissionOne> + HasGrant<PermissionTwo>) {
     println!("User has both permission one and permission two");
 }
