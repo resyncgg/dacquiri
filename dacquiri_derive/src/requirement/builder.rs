@@ -1,9 +1,10 @@
 use std::fmt::Debug;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, ItemTrait, NestedMeta, Meta, Path, TypeParamBound};
+use syn::{AttributeArgs, ItemTrait, NestedMeta, Meta, Path, TypeParamBound, Type, TypePath};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
+use crate::requirement::{RequirementBound, RequirementBoundSet};
 
 #[derive(Debug)]
 pub enum RequirementError {
@@ -15,14 +16,14 @@ pub enum RequirementError {
 }
 
 pub struct RequirementBuilder {
-    requirement_list: Vec<Path>,
+    requirement_list: Vec<RequirementBound>,
     item_trait: ItemTrait
 }
 
-impl TryFrom<(AttributeArgs, ItemTrait)> for RequirementBuilder {
+impl TryFrom<(RequirementBoundSet, ItemTrait)> for RequirementBuilder {
     type Error = RequirementError;
 
-    fn try_from((requirement_args, item_trait): (AttributeArgs, ItemTrait)) -> Result<Self, Self::Error> {
+    fn try_from((requirement_args, item_trait): (RequirementBoundSet, ItemTrait)) -> Result<Self, Self::Error> {
         if item_trait.auto_token.is_some() {
             return Err(RequirementError::AutoTraitsNotSupported);
         }
@@ -40,10 +41,16 @@ impl TryFrom<(AttributeArgs, ItemTrait)> for RequirementBuilder {
         }
 
         // #[requirement(ChangeName, AccountEnabled)] => Some(vec![ChangeName, AccountEnabled])
-        let meta_args: Option<Vec<Path>> = requirement_args.into_iter()
-            .map(|meta| match meta {
-                NestedMeta::Meta(Meta::Path(bound)) => Some(bound),
-                _ => None
+        let meta_args: Option<Vec<RequirementBound>> = requirement_args.bounds.into_iter()
+            .map(|meta| {
+                match &meta {
+                    RequirementBound { permission_ident, .. } => {
+                        println!("Woah: {}", permission_ident);
+
+                        Some(meta)
+                    },
+                    _ => None
+                }
             })
             .collect();
 
@@ -78,8 +85,20 @@ impl RequirementBuilder {
         let mut bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
 
         for requirement in &self.requirement_list {
+            let req_name = &requirement.permission_ident;
+            let id = match &requirement.specifier {
+                Some(specifier) => {
+                    let id = &specifier.id_lit;
+
+                    quote! { #id }
+                },
+                None => {
+                    quote!{ dacquiri::prelude::DEFAULT_GRANT_LABEL }
+                }
+            };
+
             let type_bound: TypeParamBound = parse_quote! {
-                dacquiri::prelude::HasGrant<#requirement>
+                dacquiri::prelude::HasGrant<#req_name<{ #id }>, { #id }>
             };
 
             bound.push(type_bound);

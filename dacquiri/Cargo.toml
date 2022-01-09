@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "A compile-time enforcing DAC authorization library."

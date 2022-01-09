@@ -135,16 +135,16 @@ impl ToTokens for GrantBuilder {
         let resource_var_name = &self.resource_var;
 
         tokens.extend(quote!{
-            pub struct #permission_identity(#resource_type);
+            pub struct #permission_identity<const ID: &'static str = { dacquiri::prelude::DEFAULT_GRANT_LABEL }>(#resource_type);
         });
 
         tokens.extend(quote!{
-           impl dacquiri::prelude::Grant for #permission_identity {
+           impl<const ID: &'static str> dacquiri::prelude::Grant<ID> for #permission_identity<ID> {
                 type Principal = #principal_type;
                 type Resource = #resource_type;
                 type Error = #error_type;
 
-                fn new_with_resource(resource: Self::Resource) -> Self { #permission_identity(resource) }
+                fn new_with_resource(resource: Self::Resource) -> Self { Self(resource) }
                 fn get_resource(&self) -> &Self::Resource { &self.0 }
 
                 // all users can change their name

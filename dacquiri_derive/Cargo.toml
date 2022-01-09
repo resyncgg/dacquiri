@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri_derive"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Derive macro support for dacquiri"
 license = "MIT"

@@ -27,3 +27,18 @@ impl User {
     }
 }
 
+pub struct Team {
+    name: String
+}
+
+impl Team {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into()
+        }
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+}
