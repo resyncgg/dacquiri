@@ -11,14 +11,6 @@ homepage = "https://resync.gg"
 keywords = ["authorization", "dac", "access", "authz", "security"]
 categories = ["authentication"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-include = [
-    "Cargo.toml",
-    "src/**/*",
-    "LICENSE",
-]
-
 [features]
 default = ["derive"]
 derive = ["dacquiri_derive"]
