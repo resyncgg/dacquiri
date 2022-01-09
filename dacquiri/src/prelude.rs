@@ -8,3 +8,12 @@ pub use crate::principal::PrincipalT;
 
 pub use crate::DEFAULT_GRANT_LABEL;
 pub use crate::impl_principal;
+
+#[cfg(feature = "derive")]
+pub use dacquiri_derive::{
+    Principal,
+    requirement,
+    grant
+};
+
+pub type GrantResult<E> = Result<(), E>;

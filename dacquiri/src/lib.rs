@@ -7,6 +7,7 @@
 #![feature(explicit_generic_args_with_impl_trait)]
 #![feature(generic_arg_infer)]
 #![feature(generic_associated_types)]
+#![feature(specialization)]
 
 pub mod prelude;
 mod grant;

@@ -23,7 +23,7 @@ macro_rules! compile_fail {
 // So I'm going to disable the tests for right now
 macro_rules! compile_pass {
     ($test_name:ident for $test_file_name:literal) => {
-        //build_test!(|path: String| trybuild::TestCases::new().pass(path), $test_name, $test_file_name);
+        // build_test!(|path: String| trybuild::TestCases::new().pass(path), $test_name, $test_file_name);
     }
 }
 

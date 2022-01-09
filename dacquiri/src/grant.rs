@@ -14,7 +14,6 @@ pub trait Grant<const ID: &'static str = DEFAULT_GRANT_LABEL> {
     fn check_grant(principal: &Self::Principal, resource: &Self::Resource) -> Result<(), Self::Error>;
 }
 
-
 pub trait HasGrant<T: Grant<ID>, const ID: &'static str = DEFAULT_GRANT_LABEL>: PrincipalT<T::Principal> {
     fn get_resource(&self) -> &T::Resource;
 }

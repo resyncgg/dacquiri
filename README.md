@@ -38,7 +38,7 @@ With DACquiri, you:
 
 Missing an authorization check? That's a compile-time error.
 
-Missing DACquiri? That's *your* error.
+Missing DACquiri? That's a *dev-time* error.
 
 ## How it works
 
@@ -55,44 +55,39 @@ Here's a simplistic example of two permissions (`PermissionOne` and `PermissionT
 ```rust
 use dacquiri::prelude::*;
 
-impl_principal!(User);
+#[derive(Principal)]
 struct User {
     name: String
 }
 
-struct PermissionOne;
-struct PermissionTwo;
-
-impl Grant for PermissionOne {
-    type Principal = User;
-
-    // give everyone this grant
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
-    fn new_with_resource(_: Self::Resource) -> Self { Self }
-    fn get_resource(&self) -> &Self::Resource { &() }
+#[grant(PermissionOne)]
+fn check_permission_one(user: user) -> GrantResult<()> {
+    Ok(())
 }
 
-impl Grant for PermissionTwo {
-    type Principal = User;
-
-    // give everyone this grant
-    fn check_grant(_: &Self::Principal, _: &Self::Resource) -> Result<(), String> { Ok(()) }
-    fn new_with_resource(_: Self::Resource) -> Self { Self }
-    fn get_resource(&self) -> &Self::Resource { &() }
+#[grant(PermissionTwo)]
+fn check_permission_two(user: User) -> GrantResult<()> {
+    Ok(())
 }
 
-fn requires_permission_one(caller: &impl HasGrant<PermissionOne>) {
+#[requirement(PermissionOne)]
+pub trait RequiresPermissionOne {}
+
+#[requirement(PermissionTwo)]
+pub trait RequiresPermissionTwo {}
+
+#[requirement(PermissionOne, PermissionTwo)]
+pub trait RequiresBothPermissions {}
+
+fn requires_permission_one(caller: &impl RequiresPermissionOne) {
     println!("The caller must have checked that you have PermissionOne");
 }
 
-fn requires_permission_two(caller: &impl HasGrant<PermissionTwo>) {
+fn requires_permission_two(caller: &impl RequiresPermissionTwo) {
     println!("The caller must have checked that you have PermissionTwo");
 }
 
-fn requires_both_permission(
-    caller: impl HasGrant<PermissionOne>
-               + HasGrant<PermissionTwo>
-) {
+fn requires_both_permission(caller: impl RequiresBothPermissions) {
     println!("The caller must have checked that you had both PermissionOne and PermissionTwo");
 }
 

@@ -2,7 +2,7 @@
 
 use dacquiri::prelude::*;
 
-impl_principal!(User);
+#[derive(Principal)]
 struct User;
 
 struct PermissionOne;

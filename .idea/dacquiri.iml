@@ -8,7 +8,13 @@
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-3f8e4ac42ce12fc4/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-732d5a9859dc1b73/out" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dacquiri/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dacquiri/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dacquiri_derive/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dacquiri/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-01623ea0d4b0b68b/out" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dacquiri/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
