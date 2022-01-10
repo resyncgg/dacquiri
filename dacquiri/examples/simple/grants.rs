@@ -2,19 +2,19 @@ use dacquiri::prelude::*;
 use crate::principal::{Team, User};
 
 #[grant(AccountEnabled)]
-fn check_account_enabled(user: User) -> GrantResult<()> {
+fn check_account_enabled(user: &User) -> GrantResult<()> {
     user.is_enabled()
         .then_some(())
         .ok_or(())
 }
 
 #[grant(ChangeName)]
-fn check_change_name(_: User) -> GrantResult<()> {
+fn check_change_name(_: &User) -> GrantResult<()> {
     Ok(())
 }
 
 #[grant(TeamMember)]
-fn check_team_perm(user: User, team: Team) -> GrantResult<()> {
+fn check_team_perm(_: &User, _: &Team) -> GrantResult<()> {
     Ok(())
 }
 
@@ -32,8 +32,8 @@ pub trait CanChangeName {
 )]
 pub trait PrintBothTeamNames {
     fn print_both_team_names(&self) {
-        let team_one: &Team = HasGrant::<TeamMember<"Check1">, _>::get_resource(self);
-        let team_two: &Team = HasGrant::<TeamMember<"Check2">, _>::get_resource(self);
+        let team_one: &Team = get_resource!(self as TeamMember["Check1"]);
+        let team_two: &Team = get_resource!(self as TeamMember["Check2"]);
 
         println!("Team 1 '{}' and Team 2 '{}'", team_one.get_name(), team_two.get_name());
     }

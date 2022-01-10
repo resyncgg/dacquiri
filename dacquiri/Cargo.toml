@@ -25,4 +25,3 @@ dacquiri_derive = { path = "../dacquiri_derive" }
 
 [[example]]
 name = "simple"
-

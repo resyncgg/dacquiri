@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "dacquiri"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "dacquiri_derive",
  "thiserror",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "dacquiri_derive"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",

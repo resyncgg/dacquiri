@@ -32,3 +32,13 @@ pub trait Grantable<P: PrincipalT<P>, R = ()>: Sized + PrincipalT<P> {
 }
 
 impl<P: PrincipalT<P>, R> Grantable<P, R> for P {}
+
+#[macro_export]
+macro_rules! get_resource {
+    ($from:ident as $ty:tt[$id:literal]) => {
+        dacquiri::prelude::HasGrant::<$ty<{ $id }>, { $id }>::get_resource($from)
+    };
+    ($from:ident as $ty:ty) => {
+        dacquiri::prelude::HasGrant::<$ty, { dacquiri::prelude::DEFAULT_GRANT_LABEL }>::get_resource($from)
+    };
+}

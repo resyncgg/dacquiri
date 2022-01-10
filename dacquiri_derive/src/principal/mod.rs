@@ -9,7 +9,7 @@ pub(crate) fn handle_principal(input: TokenStream) -> TokenStream {
     // Todo: add generics
     let principal = parse_macro_input!(input as ItemStruct);
 
-    PrincipalBuilder::from(principal.ident)
+    PrincipalBuilder::from(principal)
         .to_token_stream()
         .into()
 }

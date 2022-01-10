@@ -7,7 +7,7 @@ pub use crate::grant_chain::GrantChain;
 pub use crate::principal::PrincipalT;
 
 pub use crate::DEFAULT_GRANT_LABEL;
-pub use crate::impl_principal;
+pub use crate::get_resource;
 
 #[cfg(feature = "derive")]
 pub use dacquiri_derive::{

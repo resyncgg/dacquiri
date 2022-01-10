@@ -1,6 +1,6 @@
 mod builder;
 
-use syn::{AttributeArgs, ItemTrait, parse_macro_input, Path, Token, Ident};
+use syn::{ItemTrait, parse_macro_input, Token, Ident};
 use proc_macro::TokenStream;
 use proc_macro2::Literal;
 use quote::ToTokens;
@@ -31,7 +31,7 @@ impl Parse for RequirementBoundSet {
             bounds.push(bound);
 
             // process next comma
-            input.parse::<Token![,]>();
+            let _ = input.parse::<Token![,]>();
         }
 
         Ok(RequirementBoundSet {
@@ -58,17 +58,17 @@ impl Parse for RequirementBound {
 }
 
 pub(crate) struct RequirementBoundSpecifier {
-    as_token: Token![as],
+    _as_token: Token![as],
     id_lit: Literal
 }
 
 impl Parse for RequirementBoundSpecifier {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let as_token: Token![as] = input.parse()?;
+        let _as_token: Token![as] = input.parse()?;
         let id_lit: Literal = input.parse()?;
 
         Ok(Self {
-            as_token,
+            _as_token,
             id_lit
         })
     }

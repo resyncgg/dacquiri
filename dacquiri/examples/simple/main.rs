@@ -1,3 +1,4 @@
+#![allow(incomplete_features)]
 #![feature(bool_to_option)]
 #![feature(generic_arg_infer)]
 #![feature(trait_alias)]
@@ -25,7 +26,7 @@ fn main() -> GrantResult<()> {
 
     print_name(&mut chain);
 
-    let mut new_chain = chain
+    let new_chain = chain
         .try_grant::<TeamMember<"Check1">, _>(team_one)?
         .try_grant::<TeamMember<"Check2">, _>(team_two)?;
 

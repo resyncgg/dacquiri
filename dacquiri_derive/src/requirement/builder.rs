@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{AttributeArgs, ItemTrait, NestedMeta, Meta, Path, TypeParamBound, Type, TypePath};
+use syn::{ItemTrait, TypeParamBound};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
 use crate::requirement::{RequirementBound, RequirementBoundSet};
@@ -40,24 +40,12 @@ impl TryFrom<(RequirementBoundSet, ItemTrait)> for RequirementBuilder {
             return Err(RequirementError::BoundedTraitNotSupported);
         }
 
-        // #[requirement(ChangeName, AccountEnabled)] => Some(vec![ChangeName, AccountEnabled])
-        let meta_args: Option<Vec<RequirementBound>> = requirement_args.bounds.into_iter()
-            .map(|meta| {
-                match &meta {
-                    RequirementBound { permission_ident, .. } => {
-                        println!("Woah: {}", permission_ident);
-
-                        Some(meta)
-                    },
-                    _ => None
-                }
-            })
-            .collect();
-
-        let requirement_list = meta_args.ok_or(RequirementError::MissingRequirementBounds)?;
+        if requirement_args.bounds.is_empty() {
+            return Err(RequirementError::MissingRequirementBounds);
+        }
 
         Ok(Self {
-            requirement_list,
+            requirement_list: requirement_args.bounds,
             item_trait
         })
     }

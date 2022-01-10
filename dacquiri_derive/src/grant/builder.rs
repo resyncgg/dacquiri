@@ -19,6 +19,8 @@ pub enum GrantError {
     IncorrectErrorType,
     IncorrectPrincipalType,
     IncorrectResourceType,
+    PrincipalTypeMustBeImmutableReference,
+    ResourceTypeMustBeImmutableReference,
 }
 
 pub struct GrantBuilder {
@@ -83,11 +85,12 @@ impl TryFrom<(AttributeArgs, ItemFn)> for GrantBuilder {
         let (principal_var, principal_type) = match inputs.next() {
             Some(FnArg::Typed(PatType { pat, ty, .. })) => {
                 match (*pat, *ty) {
-                    (Pat::Wild(_), path) => {
+                    (_, Type::Path(_)) => Err(GrantError::PrincipalTypeMustBeImmutableReference),
+                    (Pat::Wild(_), Type::Reference(path)) => {
                         let ident: Ident = Ident::new("_", Span::call_site());
-                        Ok((ident, path))
+                        Ok((ident, *path.elem))
                     },
-                    (Pat::Ident(var_name), path) => Ok((var_name.ident, path)),
+                    (Pat::Ident(var_name), Type::Reference(path)) => Ok((var_name.ident, *path.elem)),
                     _ => Err(GrantError::IncorrectPrincipalType)
                 }
             },
@@ -97,7 +100,12 @@ impl TryFrom<(AttributeArgs, ItemFn)> for GrantBuilder {
         let (resource_var, resource_type) = match inputs.next() {
             Some(FnArg::Typed(PatType { pat, ty, .. })) => {
                 match (*pat, *ty) {
-                    (Pat::Ident(var_name), path) => Ok((var_name.ident, path)),
+                    (_, Type::Path(_)) => Err(GrantError::ResourceTypeMustBeImmutableReference),
+                    (Pat::Wild(_), Type::Reference(path)) => {
+                        let ident: Ident = Ident::new("_", Span::call_site());
+                        Ok((ident, *path.elem))
+                    },
+                    (Pat::Ident(var_name), Type::Reference( path)) => Ok((var_name.ident, *path.elem)),
                     _ => Err(GrantError::IncorrectResourceType)
                 }
             },
