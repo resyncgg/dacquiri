@@ -36,7 +36,7 @@ async fn main() -> GrantResult<()> {
         .try_grant_with_context::<ContextGrant>(db_connection)?
         .try_grant_async::<MyAsyncGrant>().await?
         .try_grant_with_resource_and_context_async::<MyAsyncGrantWContext, _>((), &message).await?
-        .try_grant_with_resource_and_context_async::<MyAsyncGrantWContext2, _>((), &message).await?
+        .try_grant_with_resource_and_context_async::<MyAsyncGrantWContext2<"Tag1">, _>((), &message).await?
         .try_grant_with_resource_and_context_async::<AsyncGrantWithTupleContext, _>((), (&left, &mut right)).await?;
 
     print_name(&mut chain);

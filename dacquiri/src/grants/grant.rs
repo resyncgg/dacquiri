@@ -4,7 +4,7 @@ use crate::principal::PrincipalT;
 use crate::resource::ResourceT;
 use async_trait::async_trait;
 
-pub trait BaseGrant<const ID: &'static str = DEFAULT_GRANT_TAG>: Clone + Send {
+pub trait BaseGrant<const ID: &'static str = DEFAULT_GRANT_TAG>: Clone + Send + Sync {
     type Principal: PrincipalT<Self::Principal>;
     type Resource: ResourceT = ();
     type Error = ();
@@ -17,11 +17,11 @@ pub trait BaseGrant<const ID: &'static str = DEFAULT_GRANT_TAG>: Clone + Send {
 
 #[async_trait]
 pub trait AsyncGrant<const ID: &'static str = DEFAULT_GRANT_TAG>: BaseGrant<ID> {
-    async fn check_grant_async<'ctx>(principal: Self::Principal, resource: Self::Resource, context: Self::Context<'ctx>) -> Result<(), Self::Error>;
+    async fn check_grant_async<'ctx>(principal: &Self::Principal, resource: &Self::Resource, context: Self::Context<'ctx>) -> Result<(), Self::Error>;
 }
 
 pub trait SyncGrant<const ID: &'static str = DEFAULT_GRANT_TAG>: BaseGrant<ID> {
-    fn check_grant<'ctx>(principal: Self::Principal, resource: Self::Resource, context: Self::Context<'ctx>) -> Result<(), Self::Error>;
+    fn check_grant<'ctx>(principal: &Self::Principal, resource: &Self::Resource, context: Self::Context<'ctx>) -> Result<(), Self::Error>;
 }
 
 #[macro_export]
