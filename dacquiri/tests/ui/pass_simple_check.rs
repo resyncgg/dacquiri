@@ -17,7 +17,7 @@ impl Grant for PermissionOne {
 fn main() {
     let user = User;
 
-    let grant = user.try_grant_with_resource_and_context::<PermissionOne, _>(())
+    let grant = user.try_grant_with_resource_and_context_async::<PermissionOne, _>(())
         .unwrap();
 
     guarded_function(grant);

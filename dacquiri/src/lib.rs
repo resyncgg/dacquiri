@@ -7,12 +7,12 @@
 #![feature(explicit_generic_args_with_impl_trait)]
 #![feature(generic_arg_infer)]
 #![feature(generic_associated_types)]
-#![feature(specialization)]
 
 pub mod prelude;
-mod grant;
 mod principal;
 mod grant_chain;
+mod resource;
+mod grants;
 
 /// Is the label applied to grant checks that are not resource dependant.
-pub const DEFAULT_GRANT_TAG: &'static str = "GrantCheck::__";
+pub const DEFAULT_GRANT_TAG: &'static str = "GrantTag::__";

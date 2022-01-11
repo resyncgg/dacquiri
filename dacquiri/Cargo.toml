@@ -23,6 +23,7 @@ dacquiri_derive = { version = "0.2.2", optional = true, path = "../dacquiri_deri
 [dev-dependencies]
 trybuild = "1"
 dacquiri_derive = { path = "../dacquiri_derive" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"]}
 
 [[example]]
 name = "simple"

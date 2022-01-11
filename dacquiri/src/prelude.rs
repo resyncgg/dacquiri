@@ -1,10 +1,12 @@
-pub use crate::grant::{
-    Grant,
+pub use crate::grants::{
+    BaseGrant,
+    AsyncGrant,
+    SyncGrant,
     GrantableWithResourceAndContext,
     GrantableWithResource,
     GrantableWithContext,
     Grantable,
-    HasGrant
+    HasGrant,
 };
 pub use crate::grant_chain::GrantChain;
 pub use crate::principal::PrincipalT;

@@ -26,7 +26,7 @@ impl Grant for PermissionTwo {
 fn main() {
     let user = User;
 
-    let grant = user.try_grant_with_resource_and_context::<PermissionOne, _>(())
+    let grant = user.try_grant_with_resource_and_context_async::<PermissionOne, _>(())
         .unwrap()
         .try_grant_with_resource_and_context::<PermissionTwo, _>(())
         .unwrap();

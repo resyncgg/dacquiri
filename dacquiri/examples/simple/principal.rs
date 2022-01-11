@@ -1,6 +1,6 @@
 use dacquiri::prelude::Principal;
 
-#[derive(Principal)]
+#[derive(Principal, Clone)]
 pub struct User {
     name: String,
     enabled: bool
@@ -27,6 +27,7 @@ impl User {
     }
 }
 
+#[derive(Clone)]
 pub struct Team {
     name: String
 }
