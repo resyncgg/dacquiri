@@ -31,9 +31,9 @@ impl Grant for PermissionTwo {
 fn main() {
     let user = User;
 
-    let both_grants = user.try_grant::<PermissionOne, _>(())
+    let both_grants = user.try_grant_with_resource_and_context::<PermissionOne, _>(())
         .expect("Missing permission one.")
-        .try_grant::<PermissionTwo, _>(())
+        .try_grant_with_resource_and_context::<PermissionTwo, _>(())
         .expect("Missing permission two.");
 
     guarded_function_one(both_grants);

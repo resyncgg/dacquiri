@@ -1,12 +1,15 @@
 pub use crate::grant::{
     Grant,
+    GrantableWithResourceAndContext,
+    GrantableWithResource,
+    GrantableWithContext,
     Grantable,
     HasGrant
 };
 pub use crate::grant_chain::GrantChain;
 pub use crate::principal::PrincipalT;
 
-pub use crate::DEFAULT_GRANT_LABEL;
+pub use crate::DEFAULT_GRANT_TAG;
 pub use crate::get_resource;
 
 #[cfg(feature = "derive")]

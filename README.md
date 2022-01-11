@@ -93,8 +93,8 @@ fn requires_both_permission(caller: impl RequiresBothPermissions) {
 
 fn main() -> Result<(), String> {
     let user = User { name: format!("d0nut") };
-    
-    let p1_user = user.try_grant::<PermissionOne, _>(())?;
+
+    let p1_user = user.try_grant_with_resource_and_context::<PermissionOne, _>(())?;
     requires_permission_one(&p1_user);
 
     let p2_user = p1_user.try_grant::<PermissionTwo, _>(())?;

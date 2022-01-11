@@ -26,9 +26,9 @@ impl Grant for PermissionTwo {
 fn main() {
     let user = User;
 
-    let grant = user.try_grant::<PermissionOne, _>(())
+    let grant = user.try_grant_with_resource_and_context::<PermissionOne, _>(())
         .unwrap()
-        .try_grant::<PermissionTwo, _>(())
+        .try_grant_with_resource_and_context::<PermissionTwo, _>(())
         .unwrap();
 
     guarded_function(grant);

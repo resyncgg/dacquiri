@@ -81,7 +81,7 @@ impl RequirementBuilder {
                     quote! { #id }
                 },
                 None => {
-                    quote!{ dacquiri::prelude::DEFAULT_GRANT_LABEL }
+                    quote!{ dacquiri::prelude::DEFAULT_GRANT_TAG }
                 }
             };
 

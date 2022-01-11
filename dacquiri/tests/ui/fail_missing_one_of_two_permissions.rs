@@ -26,7 +26,7 @@ impl Grant for PermissionTwo {
 fn main() {
     let user = User;
 
-    let grant = user.try_grant::<PermissionOne, _>(())
+    let grant = user.try_grant_with_resource_and_context::<PermissionOne, _>(())
         .expect("Missing permission one.");
 
     guarded_function(grant);

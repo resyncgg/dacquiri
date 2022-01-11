@@ -17,6 +17,7 @@ derive = ["dacquiri_derive"]
 
 [dependencies]
 thiserror = "1"
+async-trait = "0"
 dacquiri_derive = { version = "0.2.2", optional = true, path = "../dacquiri_derive" }
 
 [dev-dependencies]

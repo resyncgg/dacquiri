@@ -5,7 +5,7 @@
 #![feature(adt_const_params)]
 
 use dacquiri::prelude::*;
-use crate::grants::{AccountEnabled, CanChangeName, ChangeName, PrintBothTeamNames, TeamMember};
+use crate::grants::{AccountEnabled, CanChangeName, ChangeName, PrintBothTeamNames, TeamMember, ContextGrant};
 use crate::principal::{Team, User};
 
 mod principal;
@@ -21,14 +21,15 @@ fn main() -> GrantResult<()> {
 
     // required, otherwise compilation error
     let mut chain = user
-        .try_grant::<AccountEnabled, _>(())?
-        .try_grant::<ChangeName, _>(())?;
+        .try_grant::<AccountEnabled>()?
+        .try_grant::<ChangeName>()?
+        .try_grant_with_context::<ContextGrant>(format!("Woah!!"))?;
 
     print_name(&mut chain);
 
     let new_chain = chain
-        .try_grant::<TeamMember<"Check1">, _>(team_one)?
-        .try_grant::<TeamMember<"Check2">, _>(team_two)?;
+        .try_grant_with_resource::<TeamMember<"Check1">, _>(team_one)?
+        .try_grant_with_resource::<TeamMember<"Check2">, _>(team_two)?;
 
     do_the_thing_zhu_li(&new_chain);
 

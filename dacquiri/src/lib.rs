@@ -15,4 +15,4 @@ mod principal;
 mod grant_chain;
 
 /// Is the label applied to grant checks that are not resource dependant.
-pub const DEFAULT_GRANT_LABEL: &'static str = "GrantCheck::__";
+pub const DEFAULT_GRANT_TAG: &'static str = "GrantCheck::__";

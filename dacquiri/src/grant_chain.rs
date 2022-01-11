@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use crate::grant::{Grant, Grantable, HasGrant};
+use crate::grant::{Grant, GrantableWithResourceAndContext, HasGrant};
 use crate::principal::PrincipalT;
 
 
@@ -22,11 +22,11 @@ impl<const ID: &'static str, P: PrincipalT<P>, R, G: Grant<ID, Principal = P, Re
     }
 }
 
-impl<P, R1, R2, G, N, const ID: &'static str> Grantable<P, R1> for GrantChain<ID, P, R2, G, N>
+impl<P, R1, C1, R2, C2, G, N, const ID: &'static str> GrantableWithResourceAndContext<P, R1, C1> for GrantChain<ID, P, R2, G, N>
     where
         P: PrincipalT<P>,
-        G: Grant<ID, Principal = P, Resource = R2>,
-        N: Grantable<P, R1>
+        G: Grant<ID, Principal = P, Resource = R2, Context = C2>,
+        N: GrantableWithResourceAndContext<P, R1, C1>
 {}
 
 impl<const ID: &'static str, P: PrincipalT<P>, R, G: Grant<ID, Principal = P, Resource = R>, N: PrincipalT<P>> HasGrant<G, ID> for GrantChain<ID, P, R, G, N>  {

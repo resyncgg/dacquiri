@@ -18,6 +18,12 @@ fn check_team_perm(_: &User, _: &Team) -> GrantResult<()> {
     Ok(())
 }
 
+#[grant(ContextGrant)]
+fn check_context_function(_: &User, _: &(), foo: String) -> GrantResult<()> {
+    println!("Logging inside the check function: {}", foo);
+    Ok(())
+}
+
 #[requirement(ChangeName, AccountEnabled)]
 pub trait CanChangeName {
     fn change_name(&mut self, name: impl Into<String>) {
