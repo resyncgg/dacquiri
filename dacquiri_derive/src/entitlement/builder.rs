@@ -4,7 +4,7 @@ use quote::{quote, ToTokens};
 use syn::{ItemTrait, TypeParamBound};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
-use crate::requirement::{RequirementBound, RequirementBoundSet};
+use crate::entitlement::{RequirementBound, RequirementBoundSet};
 
 #[derive(Debug)]
 pub enum RequirementError {
@@ -53,13 +53,14 @@ impl TryFrom<(RequirementBoundSet, ItemTrait)> for RequirementBuilder {
 
 impl ToTokens for RequirementBuilder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.extend(self.item_trait.clone().into_token_stream());
-
         let trait_ident = &self.item_trait.ident;
         let trait_bound = self.generate_trait_bounds();
 
+        tokens.extend(self.item_trait.clone().into_token_stream());
         tokens.extend(quote! {
-            impl<T: #trait_bound> #trait_ident for T {}
+            impl<T> #trait_ident for T
+                where
+                    T: #trait_bound {}
         });
     }
 }
@@ -71,6 +72,8 @@ impl RequirementBuilder {
 
     fn generate_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
         let mut bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
+        bound.push(parse_quote! { Sized });
+        bound.push(parse_quote! { dacquiri::prelude::AttributeChainT });
 
         for requirement in &self.requirement_list {
             let req_name = &requirement.permission_ident;
@@ -81,12 +84,12 @@ impl RequirementBuilder {
                     quote! { #id }
                 },
                 None => {
-                    quote!{ dacquiri::prelude::DEFAULT_GRANT_TAG }
+                    quote!{ dacquiri::prelude::DEFAULT_ATTRIBUTE_TAG }
                 }
             };
 
             let type_bound: TypeParamBound = parse_quote! {
-                dacquiri::prelude::HasGrant<#req_name<{ #id }>, { #id }>
+                dacquiri::prelude::HasAttribute<#req_name<{ #id }>, { #id }>
             };
 
             bound.push(type_bound);

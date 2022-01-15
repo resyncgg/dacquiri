@@ -5,9 +5,9 @@ use proc_macro::TokenStream;
 use proc_macro2::Literal;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
-use crate::requirement::builder::RequirementBuilder;
+use crate::entitlement::builder::RequirementBuilder;
 
-pub(crate) fn handle_requirement(args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn handle_entitlement(args: TokenStream, input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as ItemTrait);
     let attribute_args = parse_macro_input!(args as RequirementBoundSet);
 

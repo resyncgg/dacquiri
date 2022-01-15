@@ -1,63 +1,47 @@
 #![allow(incomplete_features)]
-#![feature(bool_to_option)]
-#![feature(generic_arg_infer)]
-#![feature(trait_alias)]
-#![feature(adt_const_params)]
-#![feature(in_band_lifetimes)]
 #![feature(generic_associated_types)]
+#![feature(adt_const_params)]
+#![feature(generic_arg_infer)]
 
-use dacquiri::prelude::*;
-use crate::grants::*;
-use crate::principal::{Team, User};
+use dacquiri::prelude::Grantable;
+use crate::models::User;
+use crate::attributes::*;
+use crate::entitlements::{
+    MaturedAccount,
+    AdminAccount
+};
 
-mod principal;
-mod grants;
+mod models;
+mod attributes;
+mod error;
+mod entitlements;
 
 #[tokio::main]
-async fn main() -> GrantResult<()> {
-    let mut user = User::new("d0nut");
-    let team_one = Team::new("team 1");
-    let team_two = Team::new("team 2");
+async fn main() {
+    let admin_user = User::new("d0nut", 0);
+    let mut random_user = User::new("insanitybit", 1);
 
-    // required, otherwise runtime error
-    user.enable_account();
+    /*
+        Check that the admin_user is *actually* an admin and then call the `do_nothing()` function.
+     */
+    let checked_admin_user = admin_user
+        .try_grant::<AccountIsAdmin>()
+        .expect("User was not an admin.");
+    checked_admin_user.do_nothing();
+    // we must enable the "random_user" account
+    checked_admin_user.enable_account(&mut random_user);
 
-    let db_connection = format!("pretend this string is, instead, a database connection");
+    let checked_random_user = random_user
+        .try_grant::<AccountIsEnabled>()
+        .expect("User is not enabled.")
+        .try_grant::<AccountIsMatured>()
+        // we will panic here because our account was *just* created!
+        // however, deleting this try_grant will result in a compiler error
+        .expect("User account is not at least 30 days old.");
 
-    let message = format!("Woah");
-
-    let left = format!("left");
-    let mut right = format!("right");
-
-    // required, otherwise compilation error
-    let mut chain = user
-        .try_grant::<AccountEnabled>()?
-        .try_grant::<ChangeName>()?
-        .try_grant_with_context::<ContextGrant>(db_connection)?
-        .try_grant_async::<MyAsyncGrant>().await?
-        .try_grant_with_resource_and_context_async::<MyAsyncGrantWContext, _>((), &message).await?
-        .try_grant_with_resource_and_context_async::<MyAsyncGrantWContext2<"Tag1">, _>((), &message).await?
-        .try_grant_with_resource_and_context_async::<AsyncGrantWithTupleContext, _>((), (&left, &mut right)).await?;
-
-    print_name(&mut chain);
-
-    let new_chain = chain
-        .try_grant_with_resource::<TeamMember<"Check1">, _>(team_one)?
-        .try_grant_with_resource::<TeamMember<"Check2">, _>(team_two)?;
-
-    do_the_thing_zhu_li(&new_chain);
-
-    Ok(())
+    guarded_function(checked_random_user, "Hello, world :)");
 }
 
-fn print_name(user: &mut impl CanChangeName) {
-    println!("My name is: {}", user.get_principal().get_name());
-
-    user.change_name("new_name");
-
-    println!("My new name is: {}", user.get_principal().get_name());
-}
-
-fn do_the_thing_zhu_li(user: &impl PrintBothTeamNames) {
-    user.print_both_team_names();
+fn guarded_function(user: impl MaturedAccount, message: impl Into<String>) {
+    user.post_message(message);
 }

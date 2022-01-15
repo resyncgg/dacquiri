@@ -1,1 +1,1 @@
-pub trait ResourceT = Clone + Send + Sync;
+pub trait ResourceT = Send + Sync;

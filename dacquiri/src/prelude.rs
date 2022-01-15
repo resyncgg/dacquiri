@@ -1,24 +1,35 @@
-pub use crate::grants::{
-    BaseGrant,
+pub use crate::attributes::{
+    BaseAttribute,
     AsyncGrant,
     SyncGrant,
-    GrantableWithResourceAndContext,
+    AttributeWithResourceAndContext,
     GrantableWithResource,
     GrantableWithContext,
     Grantable,
-    HasGrant,
+    HasAttribute,
 };
-pub use crate::grant_chain::GrantChain;
-pub use crate::principal::PrincipalT;
+pub use crate::attribute_chain::{
+    AttributeChain,
+    AttributeChainT
+};
+/// The required trait bound for any type defined as a subject!
+///
+/// The proper way to get this trait bound is by marking your structs with `#[derive(Subject)]`.
+pub use crate::subject::SubjectT;
+/// The required trait bound for any type defined as a resource.
+///
+/// In short, it must be Send + Sync because we _potentially_ may send it across threads.
+pub use crate::resource::ResourceT;
 
-pub use crate::DEFAULT_GRANT_TAG;
-pub use crate::get_resource;
+#[doc(hidden)]
+pub use crate::DEFAULT_ATTRIBUTE_TAG;
 
 #[cfg(feature = "derive")]
 pub use dacquiri_derive::{
-    Principal,
-    requirement,
-    grant
+    Subject,
+    entitlement,
+    attribute
 };
 
-pub type GrantResult<E> = Result<(), E>;
+/// The required return type for [`attribute`](crate::prelude::attribute) marked functions.
+pub type AttributeResult<E> = Result<(), E>;

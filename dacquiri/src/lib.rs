@@ -4,15 +4,16 @@
 #![feature(auto_traits)]
 #![feature(trait_alias)]
 #![feature(associated_type_defaults)]
-#![feature(explicit_generic_args_with_impl_trait)]
 #![feature(generic_arg_infer)]
 #![feature(generic_associated_types)]
 
-pub mod prelude;
-mod principal;
-mod grant_chain;
-mod resource;
-mod grants;
+#![doc = include_str!("../README.md")]
 
-/// Is the label applied to grant checks that are not resource dependant.
-pub const DEFAULT_GRANT_TAG: &'static str = "GrantTag::__";
+pub mod prelude;
+mod subject;
+mod attributes;
+mod attribute_chain;
+mod resource;
+
+#[doc(hidden)]
+pub const DEFAULT_ATTRIBUTE_TAG: &'static str = "AttributeTag::DEFAULT";
