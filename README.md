@@ -40,7 +40,6 @@ Some additional _attributes_ you might define could answer the following:
 ## Writing Attributes
 We define _attributes_ using the [`attribute`](crate::prelude::attribute) macro, 1 to 3 arguments, and an [`AttributeResult`](crate::prelude::AttributeResult) return type.
 ```rust
-# struct User { enabled: bool }
 use dacquiri::prelude::*;
 #[attribute(UserIsEnabled)]
 fn check_user_is_enabled(user: &User) -> AttributeResult<String> {
@@ -53,9 +52,6 @@ fn check_user_is_enabled(user: &User) -> AttributeResult<String> {
 This will automatically generate an _attribute_ with a `User` as the subject and `()` as the resource.
 If we have a resource we depend on, we can add it as the second argument to the function.
 ```rust
-# use std::collections::HashSet;
-# struct User { user_id: u64 }
-# struct Team { users: HashSet<u64> }
 use dacquiri::prelude::*;
 #[attribute(UserIsTeamMember)]
 fn check_user_team(
@@ -75,11 +71,6 @@ third argument to provide _context_ or assets required to access additional, req
 
 Here's an example iteration on the previous _attribute_ we defined where we fetch data, live, from a database.
 ```rust
-# use std::collections::HashSet;
-# struct User { user_id: u64 }
-# struct Team { team_id: u64 }
-# struct DatabaseConnect;
-# impl DatabaseConnect { async fn count_query(&mut self, query_str: impl Into<String>, params: Vec<u64>) -> Result<u64, ()> { Ok(1) } }
 use dacquiri::prelude::*;
 #[attribute(UserIsTeamMember)]
 async fn user_team_check(
