@@ -9,8 +9,8 @@ pub trait EnabledAccount {
     }
 }
 
-#[entitlement(AccountIsEnabled, AccountIsMatured)]
-pub trait MaturedAccount {
+#[entitlement(AccountIsMatured)]
+pub trait MaturedAccount: EnabledAccount {
     fn post_message(&self, message: impl Into<String>) {
         let user: &User = self.get_subject();
 

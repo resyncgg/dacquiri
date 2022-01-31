@@ -24,7 +24,7 @@ pub trait AttributeWithResourceAndContext<P, R, C>
         context: C
     ) -> Result<AttributeChain<ID, P, R, G, Self>, G::Error>
         where
-            G: AsyncGrant<ID, Subject= P, Resource = R, Context<'ctx> = C>,
+            G: AsyncGrant<ID, Subject = P, Resource = R, Context<'ctx> = C>,
             R: 'async_trait,
             C: 'async_trait
     {
@@ -41,7 +41,7 @@ pub trait AttributeWithResourceAndContext<P, R, C>
         context: C
     ) -> Result<AttributeChain<ID, P, R, G, Self>, G::Error>
         where
-            G: SyncGrant<ID, Subject= P, Resource = R, Context<'ctx> = C>,
+            G: SyncGrant<ID, Subject = P, Resource = R, Context<'ctx> = C>,
     {
         let subject = self.get_subject();
 

@@ -11,7 +11,6 @@ pub enum RequirementError {
     AutoTraitsNotSupported,
     GenericTraitsNotSupported,
     UnsafeTraitNotSupported,
-    BoundedTraitNotSupported,
     MissingRequirementBounds
 }
 
@@ -34,10 +33,6 @@ impl TryFrom<(RequirementBoundSet, ItemTrait)> for RequirementBuilder {
 
         if item_trait.unsafety.is_some() {
             return Err(RequirementError::UnsafeTraitNotSupported);
-        }
-
-        if !item_trait.supertraits.is_empty() {
-            return Err(RequirementError::BoundedTraitNotSupported);
         }
 
         if requirement_args.bounds.is_empty() {
@@ -72,6 +67,9 @@ impl RequirementBuilder {
 
     fn generate_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
         let mut bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
+        // To allow for normal trait bounds for entitlements
+        bound.extend(self.item_trait.supertraits.clone());
+
         bound.push(parse_quote! { Sized });
         bound.push(parse_quote! { dacquiri::prelude::AttributeChainT });
 
