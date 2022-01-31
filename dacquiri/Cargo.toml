@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "An authorization framework with compile-time enforcement."
@@ -8,7 +8,7 @@ repository = "https://github.com/resyncgg/dacquiri"
 license = "MIT"
 readme = "README.md"
 homepage = "https://resync.gg"
-keywords = ["authorization", "dac", "access", "authz", "security"]
+keywords = ["authorization", "abac", "access", "authz", "security"]
 categories = ["authentication"]
 
 [features]
@@ -18,7 +18,7 @@ derive = ["dacquiri_derive"]
 [dependencies]
 thiserror = "1"
 async-trait = "0"
-dacquiri_derive = { version = "0.3.0", optional = true, path = "../dacquiri_derive" }
+dacquiri_derive = { version = "0.3.1", optional = true, path = "../dacquiri_derive" }
 
 [dev-dependencies]
 trybuild = "1"
