@@ -1,1 +1,0 @@
-pub trait ResourceT = Send + Sync;
