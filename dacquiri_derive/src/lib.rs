@@ -1,3 +1,5 @@
+#![deny(warnings)]
+#![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
 //! An authorization framework with compile-time enforcement.
@@ -9,11 +11,12 @@
 use proc_macro::TokenStream;
 
 mod attribute;
-mod entitlement;
+mod policy;
+mod utils;
 
 #[proc_macro_attribute]
-pub fn entitlement(args: TokenStream, input: TokenStream) -> TokenStream {
-    entitlement::handle_entitlement(args, input)
+pub fn policy(args: TokenStream, input: TokenStream) -> TokenStream {
+    policy::handle_policy(args, input)
 }
 
 #[proc_macro_attribute]

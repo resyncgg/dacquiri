@@ -6,7 +6,7 @@ pub struct User {
 }
 
 pub struct Team {
-    name: String,
+    pub name: String,
     enabled: bool,
     owner: u64
 }

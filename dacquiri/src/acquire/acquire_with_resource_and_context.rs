@@ -3,7 +3,7 @@ use crate::attribute::{
     AsyncAttribute,
     SyncAttribute
 };
-use crate::chain::{ConstraintChain, ConstraintResult, ConstraintElement, ElementTag, ConstraintT};
+use crate::chain::{ConstraintChain, ConstraintEntity, EntityTag, ConstraintT};
 use crate::error::ConstraintError;
 
 
@@ -17,19 +17,19 @@ pub trait AcquireAttributeWithResourceAndContext<C: Send>: Sized + ConstraintT {
     async fn constrain_with_resource_and_context_async<
         'ctx,
         Attr,
-        const STAG: ElementTag,
-        const RTAG: ElementTag,
+        const STAG: EntityTag,
+        const RTAG: EntityTag,
     >(self, context: C) -> Result<ConstraintChain<STAG, RTAG, Attr, Self>, Attr::Error>
         where
-            Attr::Subject: ConstraintElement + 'static,
-            Attr::Resource: ConstraintElement + 'static,
+            Attr::Subject: ConstraintEntity + 'static,
+            Attr::Resource: ConstraintEntity + 'static,
             C: 'async_trait,
             Attr: AsyncAttribute<Context<'ctx> = C>,
     {
-        let subject: &Attr::Subject = self.get_element::<_, STAG>()
+        let subject: &Attr::Subject = self.get_entity::<_, STAG>()
             .ok_or(ConstraintError::FailedToFetchSubject)?;
 
-        let resource: &Attr::Resource = self.get_element::<_, RTAG>()
+        let resource: &Attr::Resource = self.get_entity::<_, RTAG>()
             .ok_or(ConstraintError::FailedToFetchResource)?;
 
         Attr::test_async(subject, resource, context).await?;
@@ -40,18 +40,18 @@ pub trait AcquireAttributeWithResourceAndContext<C: Send>: Sized + ConstraintT {
     fn constrain_with_resource_and_context<
         'ctx,
         Attr,
-        const STAG: ElementTag,
-        const RTAG: ElementTag
+        const STAG: EntityTag,
+        const RTAG: EntityTag
     >(self, context: C) -> Result<ConstraintChain<STAG, RTAG, Attr, Self>, Attr::Error>
         where
-            Attr::Subject: ConstraintElement + 'static,
-            Attr::Resource: ConstraintElement + 'static,
+            Attr::Subject: ConstraintEntity + 'static,
+            Attr::Resource: ConstraintEntity + 'static,
             Attr: SyncAttribute<Context<'ctx> = C>,
     {
-        let subject: &Attr::Subject = self.get_element::<_, STAG>()
+        let subject: &Attr::Subject = self.get_entity::<_, STAG>()
             .ok_or(ConstraintError::FailedToFetchSubject)?;
 
-        let resource: &Attr::Resource = self.get_element::<_, RTAG>()
+        let resource: &Attr::Resource = self.get_entity::<_, RTAG>()
             .ok_or(ConstraintError::FailedToFetchResource)?;
 
         Attr::test(subject, resource, context)?;

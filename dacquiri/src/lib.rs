@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 #![feature(associated_type_defaults)]
@@ -18,6 +19,6 @@ pub mod prelude;
 mod constraint;
 
 #[doc(hidden)]
-pub const DEFAULT_ELEMENT_TAG: &'static str = "___";
+pub const DEFAULT_ELEMENT_TAG: &str = "___";
 
 

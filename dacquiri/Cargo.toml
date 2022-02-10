@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "An authorization framework with compile-time enforcement."
@@ -19,14 +19,13 @@ derive = ["dacquiri_derive"]
 thiserror = "1"
 async-trait = "0"
 fxhash = "0.2"
-dacquiri_derive = { version = "0.3.1", optional = true, path = "../dacquiri_derive" }
+dacquiri_derive = { version = "0.4", optional = true, path = "../dacquiri_derive" }
 
 [dev-dependencies]
 trybuild = "1"
 async-trait = "0"
 chrono = "0.4"
 dacquiri_derive = { path = "../dacquiri_derive" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"]}
 
 [[example]]
 name = "simple"

@@ -21,8 +21,8 @@ use syn::{
 
 // The name of the context lifetime.
 // This should match the context lifetime defined on BaseAttribute
-const CONTEXT_LIFETIME: &'static str = "'ctx";
-const IGNORED_ARGUMENT_NAME: &'static str = "_";
+const CONTEXT_LIFETIME: &str = "'ctx";
+const IGNORED_ARGUMENT_NAME: &str = "_";
 
 #[derive(Debug)]
 pub enum GrantError {
@@ -173,7 +173,7 @@ fn substitute_lifetime_with_context_lifetime(ty: Type) -> Type {
             let adjusted_types = tuple_type.elems
                 .clone()
                 .into_iter()
-                .map(|inner_type| substitute_lifetime_with_context_lifetime(inner_type))
+                .map(substitute_lifetime_with_context_lifetime)
                 .collect::<Vec<Type>>();
 
             tuple_type.elems.clear();
@@ -197,14 +197,14 @@ fn extract_type(input: FnArg, force_reference: bool) -> Result<(Ident, Type), Gr
     }?;
 
     if force_reference {
-        extract_reference_type(pat, ty)
+        extract_reference_type(*pat, *ty)
     } else {
-        extract_any_type(pat, ty)
+        extract_any_type(*pat, *ty)
     }
 }
 
-fn extract_reference_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type), GrantError> {
-    match (*pat, *ty) {
+fn extract_reference_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
+    match (pat, ty) {
         (Pat::Wild(_), Type::Reference(inner)) => {
             let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
 
@@ -216,8 +216,8 @@ fn extract_reference_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type),
     }
 }
 
-fn extract_any_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type), GrantError> {
-    match (*pat, *ty) {
+fn extract_any_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
+    match (pat, ty) {
         (Pat::Wild(_), ty) => {
             let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
 
