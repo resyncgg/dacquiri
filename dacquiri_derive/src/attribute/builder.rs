@@ -21,8 +21,8 @@ use syn::{
 
 // The name of the context lifetime.
 // This should match the context lifetime defined on BaseAttribute
-const CONTEXT_LIFETIME: &'static str = "'ctx";
-const IGNORED_ARGUMENT_NAME: &'static str = "_";
+const CONTEXT_LIFETIME: &str = "'ctx";
+const IGNORED_ARGUMENT_NAME: &str = "_";
 
 #[derive(Debug)]
 pub enum GrantError {
@@ -33,7 +33,7 @@ pub enum GrantError {
     ConstFunctionsNotSupported,
     FunctionReturnTypeRequired,
     IncorrectFunctionReturnType,
-    ReturnTypeMustBeGrantResult,
+    ReturnTypeMustBeAttributeResult,
     GrantResultRequiresOneGeneric,
     IncorrectNumberOfInputArguments,
     IncorrectType,
@@ -92,7 +92,7 @@ impl TryFrom<(AttributeArgs, ItemFn)> for AttributeBuilder {
         let grant_result_ident: Ident = parse_quote!(AttributeResult);
 
         let error_type = match first_segment.value() {
-            path_segment if path_segment.ident != grant_result_ident => Err(GrantError::ReturnTypeMustBeGrantResult),
+            path_segment if path_segment.ident != grant_result_ident => Err(GrantError::ReturnTypeMustBeAttributeResult),
             path_segment => match path_segment.arguments.clone() {
                 PathArguments::AngleBracketed(mut arguments) if arguments.args.len() == 1 => {
                     match arguments.args.pop().map(|pair| pair.into_value()) {
@@ -173,7 +173,7 @@ fn substitute_lifetime_with_context_lifetime(ty: Type) -> Type {
             let adjusted_types = tuple_type.elems
                 .clone()
                 .into_iter()
-                .map(|inner_type| substitute_lifetime_with_context_lifetime(inner_type))
+                .map(substitute_lifetime_with_context_lifetime)
                 .collect::<Vec<Type>>();
 
             tuple_type.elems.clear();
@@ -197,14 +197,14 @@ fn extract_type(input: FnArg, force_reference: bool) -> Result<(Ident, Type), Gr
     }?;
 
     if force_reference {
-        extract_reference_type(pat, ty)
+        extract_reference_type(*pat, *ty)
     } else {
-        extract_any_type(pat, ty)
+        extract_any_type(*pat, *ty)
     }
 }
 
-fn extract_reference_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type), GrantError> {
-    match (*pat, *ty) {
+fn extract_reference_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
+    match (pat, ty) {
         (Pat::Wild(_), Type::Reference(inner)) => {
             let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
 
@@ -216,8 +216,8 @@ fn extract_reference_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type),
     }
 }
 
-fn extract_any_type(pat: Box<Pat>, ty: Box<Type>) -> Result<(Ident, Type), GrantError> {
-    match (*pat, *ty) {
+fn extract_any_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
+    match (pat, ty) {
         (Pat::Wild(_), ty) => {
             let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
 
@@ -245,34 +245,29 @@ impl ToTokens for AttributeBuilder {
         let subject_check_impl = &self.attribute_check_block;
         
         tokens.extend(quote!{
-            pub struct #permission_identity<const ID: &'static str = { dacquiri::prelude::DEFAULT_ATTRIBUTE_TAG }>(#resource_type);
+            pub struct #permission_identity;
         });
 
         tokens.extend(quote!{
-           impl<const ID: &'static str> dacquiri::prelude::BaseAttribute<ID> for #permission_identity<ID> {
+           impl dacquiri::prelude::BaseAttribute for #permission_identity {
                 type Subject = #subject_type;
                 type Resource = #resource_type;
                 type Context<'ctx> = #context_type;
                 type Error = #error_type;
-
-                fn new_with_resource(resource: Self::Resource) -> Self { Self(resource) }
-                fn get_resource(&self) -> &Self::Resource { &self.0 }
             }
         });
 
         if self.is_async {
             tokens.extend(quote!{
                 #[async_trait::async_trait]
-                impl<const ID: &'static str> dacquiri::prelude::AsyncGrant<ID> for #permission_identity<ID> {
-                    // all users can change their name
-                    async fn grant_async<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
+                impl dacquiri::prelude::AsyncAttribute for #permission_identity {
+                    async fn test_async<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
                 }
             });
         } else {
             tokens.extend(quote!{
-                impl<const ID: &'static str> dacquiri::prelude::SyncGrant<ID> for #permission_identity<ID> {
-                    // all users can change their name
-                    fn grant<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
+                impl dacquiri::prelude::SyncAttribute for #permission_identity {
+                    fn test<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
                 }
             });
         }

@@ -1,35 +1,31 @@
-pub use crate::attributes::{
+pub use crate::error::ConstraintError;
+pub use crate::attribute::{
     BaseAttribute,
-    AsyncGrant,
-    SyncGrant,
-    AttributeWithResourceAndContext,
-    GrantableWithResource,
-    GrantableWithContext,
-    Grantable,
-    HasAttribute,
+    AsyncAttribute,
+    SyncAttribute,
+    AttributeResult
 };
-pub use crate::attribute_chain::{
-    AttributeChain,
-    AttributeChainT
+pub use crate::chain::{
+    ConstraintChain,
+    ConstraintEntity,
+    ConstraintResult,
+    ConstraintStore,
+    ConstraintT
 };
-/// The required trait bound for any type defined as a subject!
-///
-/// The proper way to get this trait bound is by marking your structs with `#[derive(Subject)]`.
-pub use crate::subject::SubjectT;
-/// The required trait bound for any type defined as a resource.
-///
-/// In short, it must be Send + Sync because we _potentially_ may send it across threads.
-pub use crate::resource::ResourceT;
+pub use crate::has::HasConstraint;
+pub use crate::acquire::{
+    acquire_default::AcquireAttribute,
+    acquire_with_resource::AcquireAttributeWithResource,
+    acquire_with_context::AcquireAttributeWithContext,
+    acquire_with_resource_and_context::AcquireAttributeWithResourceAndContext
+};
+pub use crate::constraint::InitializeConstraint;
 
 #[doc(hidden)]
-pub use crate::DEFAULT_ATTRIBUTE_TAG;
+pub use crate::DEFAULT_ELEMENT_TAG;
 
 #[cfg(feature = "derive")]
 pub use dacquiri_derive::{
-    Subject,
-    entitlement,
+    policy,
     attribute
 };
-
-/// The required return type for [`attribute`](crate::prelude::attribute) marked functions.
-pub type AttributeResult<E> = Result<(), E>;
