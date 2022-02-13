@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use crate::error::ConstraintError;
 
 pub type AttributeResult<E> = Result<(), E>;
 
@@ -7,7 +6,7 @@ pub trait BaseAttribute: Send + Sync {
     type Subject = ();
     type Resource = ();
     type Context<'ctx> = ();
-    type Error: From<ConstraintError>;
+    type Error;
 }
 
 pub trait SyncAttribute: BaseAttribute {

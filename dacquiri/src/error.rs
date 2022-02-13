@@ -1,9 +1,7 @@
 
 #[derive(Debug)]
 pub enum ConstraintError {
-    FailedToAddEntity,
-    FailedToFetchSubject,
-    FailedToFetchResource
+    EntityAlreadyExists
 }
 
 impl From<ConstraintError> for () {

@@ -1,15 +1,17 @@
-use crate::chain::{ConstraintT, EntityTag};
+use crate::chain::EntityTag;
 use crate::prelude::ConstraintStore;
+use crate::private::PrivateConstraintT;
+use crate::store::EntityProof;
 
 pub trait InitializeConstraint: Sized + Send + Sync + 'static {
-    fn begin_constraint<const STAG: EntityTag>(self) -> ConstraintStore {
+    fn into_entity<const ETAG: EntityTag>(self) -> EntityProof<ETAG, Self, ConstraintStore> {
         let mut store = ConstraintStore::new();
 
-        store = store
-            .add_entity::<STAG>(self)
-            .expect("Can't be an error");
-
         store
+            ._private_add_entity::<Self, ETAG>(self)
+            .expect("This should be impossible! No entities have been added yet.");
+
+        EntityProof::<_, _, _>::new(store)
     }
 }
 

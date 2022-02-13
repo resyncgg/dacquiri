@@ -5,7 +5,7 @@ use syn::{ConstParam, Generics, ItemTrait, TypeParamBound, LitStr};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
 use crate::policy::builder::PolicyError::AutoTraitsNotSupported;
-use crate::policy::parser::{Constraint, DependentPolicy, Policy};
+use crate::policy::parser::{Constraint, DependentPolicy, EntityDeclaration, Policy};
 
 #[derive(Debug)]
 pub enum PolicyError {
@@ -133,6 +133,12 @@ impl PolicyBuilder {
                     dacquiri::prelude::HasConstraint<#attribute, #subject_id, #resource>
                 });
             }
+        }
+
+        for EntityDeclaration { entity_name, entity_type, .. } in &self.policy.entities.declarations {
+            trait_bound.push(parse_quote! {
+                dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
+            });
         }
 
         trait_bound

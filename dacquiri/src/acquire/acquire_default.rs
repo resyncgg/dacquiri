@@ -5,8 +5,8 @@ use crate::attribute::{
     SyncAttribute
 };
 use crate::chain::{ConstraintChain, ConstraintEntity, EntityTag};
-use crate::error::ConstraintError;
 use crate::DEFAULT_ELEMENT_TAG;
+use crate::has::HasEntityWithType;
 
 impl<T> AcquireAttribute for T
     where
@@ -21,10 +21,10 @@ pub trait AcquireAttribute: AcquireAttributeWithResourceAndContext<()> {
     >(self) -> Result<ConstraintChain<STAG, DEFAULT_ELEMENT_TAG, Attr, Self>, Attr::Error>
         where
             Attr::Subject: ConstraintEntity + 'static,
+            Self: HasEntityWithType<STAG, Attr::Subject>,
             Attr: AsyncAttribute<Resource = (), Context<'ctx> = ()>,
     {
-        let subject: &Attr::Subject = self.get_entity::<_, STAG>()
-            .ok_or(ConstraintError::FailedToFetchSubject)?;
+        let subject = self.get_entity::<_, STAG>();
 
         Attr::test_async(subject, &(), ()).await?;
 
@@ -38,10 +38,10 @@ pub trait AcquireAttribute: AcquireAttributeWithResourceAndContext<()> {
     >(self) -> Result<ConstraintChain<STAG, DEFAULT_ELEMENT_TAG, Attr, Self>, Attr::Error>
         where
             Attr::Subject: ConstraintEntity + 'static,
+            Self: HasEntityWithType<STAG, Attr::Subject>,
             Attr: SyncAttribute<Resource = (), Context<'ctx> = ()>,
     {
-        let subject: &Attr::Subject = self.get_entity::<_, STAG>()
-            .ok_or(ConstraintError::FailedToFetchSubject)?;
+        let subject = self.get_entity::<_, STAG>();
 
         Attr::test(subject, &(), ())?;
 

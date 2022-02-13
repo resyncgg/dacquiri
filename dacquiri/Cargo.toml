@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "An authorization framework with compile-time enforcement."
@@ -23,9 +23,15 @@ dacquiri_derive = { version = "0.4", optional = true, path = "../dacquiri_derive
 
 [dev-dependencies]
 trybuild = "1"
+rand = "0.8"
+parking_lot = "0.12"
+thiserror = "1.0.30"
 async-trait = "0"
 chrono = "0.4"
 dacquiri_derive = { path = "../dacquiri_derive" }
 
 [[example]]
 name = "simple"
+
+[[example]]
+name = "bank"

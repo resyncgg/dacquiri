@@ -1,24 +1,14 @@
-use std::any::Any;
 use std::marker::PhantomData;
-use fxhash::FxHashMap;
 use crate::attribute::BaseAttribute;
 use crate::error::ConstraintError;
+use crate::has::{HasEntityWithType, ShedNext};
+use crate::private::PrivateConstraintT;
+use crate::store::EntityProof;
 
 pub type EntityTag = &'static str;
 pub type ConstraintResult<T> = Result<T, ConstraintError>;
 pub trait ConstraintEntity = Send + Sync;
 
-pub struct ConstraintStore {
-    entity_map: FxHashMap<&'static str, Box<dyn Any>>
-}
-
-impl ConstraintStore {
-    pub(crate) fn new() -> Self {
-        Self {
-            entity_map: FxHashMap::default()
-        }
-    }
-}
 
 pub struct ConstraintChain<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> {
     next: Next,
@@ -38,41 +28,101 @@ impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> ConstraintChain<S
     }
 }
 
+pub trait ConstraintT: PrivateConstraintT + Sized {
+    fn add_entity<T, const ETAG: EntityTag>(self, entity: T) -> ConstraintResult<EntityProof<ETAG, T, Self>>
+        where
+            T: ConstraintEntity + 'static;
 
-pub trait ConstraintT: Sized {
-    fn add_entity<const TAG: EntityTag>(self, entity: impl ConstraintEntity + 'static) -> ConstraintResult<Self>;
-    fn get_entity<T: ConstraintEntity + 'static, const TAG: EntityTag>(&self) -> Option<&T>;
+    fn get_entity<T, const TAG: EntityTag>(&self) -> &T
+        where
+            T: ConstraintEntity + 'static,
+            Self: HasEntityWithType<TAG, T>;
+
+    fn get_entity_mut<T, const TAG: EntityTag>(&mut self) -> &mut T
+        where
+            T: ConstraintEntity + 'static,
+            Self: HasEntityWithType<TAG, T>;
 }
 
-impl ConstraintT for ConstraintStore {
-    fn add_entity<const TAG: EntityTag>(mut self, entity: impl ConstraintEntity + 'static) -> ConstraintResult<Self> {
-        // if we previously held an entity under this key and we attempted to overwrite it
-        // we need to destroy the chain because it is invalid now
-        match self.entity_map.insert(TAG, Box::new(entity)) {
-            Some(_) => Err(ConstraintError::FailedToAddEntity),
-            None => Ok(self)
-        }
+impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> PrivateConstraintT for ConstraintChain<STAG, RTAG, Attr, Next>
+    where
+        Attr: BaseAttribute,
+        Next: ConstraintT,
+{
+    fn _private_add_entity<T, const ETAG: EntityTag>(&mut self, entity: T) -> ConstraintResult<()>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_add_entity::<T, ETAG>(entity)
     }
 
-    fn get_entity<T: ConstraintEntity + 'static, const TAG: EntityTag>(&self) -> Option<&T> {
-        self.entity_map
-            .get(&TAG)
-            .and_then(|boxed| boxed.downcast_ref())
+    fn _private_get_entity_ref<T, const ETAG: EntityTag>(&self) -> &T
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_get_entity_ref::<T, ETAG>()
+    }
+
+    fn _private_get_entity_mut<T, const ETAG: EntityTag>(&mut self) -> &mut T
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_get_entity_mut::<T, ETAG>()
+    }
+
+    fn _private_get_entity<T, const ETAG: EntityTag>(&mut self) -> T
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_get_entity::<T, ETAG>()
     }
 }
 
 impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> ConstraintT for ConstraintChain<STAG, RTAG, Attr, Next>
     where
         Attr: BaseAttribute,
-        Next: ConstraintT
+        Next: ConstraintT,
 {
-    fn add_entity<const TAG: EntityTag>(self, entity: impl ConstraintEntity + 'static) -> ConstraintResult<Self> {
-        let next = self.next.add_entity::<TAG>(entity)?;
-
-        Ok(ConstraintChain::<_, _, _, _>::new(next))
+    fn add_entity<T, const ETAG: EntityTag>(mut self, entity: T) -> ConstraintResult<EntityProof<ETAG, T, Self>>
+        where
+            T: ConstraintEntity + 'static,
+    {
+        self._private_add_entity::<T, ETAG>(entity)
+            .map(|_| EntityProof::<_, _, _>::new(self))
     }
 
-    fn get_entity<T: ConstraintEntity + 'static, const TAG: EntityTag>(&self) -> Option<&T> {
-        self.next.get_entity::<T, TAG>()
+    fn get_entity<T, const TAG: EntityTag>(&self) -> &T
+        where
+            T: ConstraintEntity + 'static,
+            Self: HasEntityWithType<TAG, T>
+    {
+        self._private_get_entity_ref::<T, TAG>()
+    }
+
+    fn get_entity_mut<T, const TAG: EntityTag>(&mut self) -> &mut T
+        where
+            T: ConstraintEntity + 'static,
+            Self: HasEntityWithType<TAG, T>
+    {
+        self._private_get_entity_mut::<T, TAG>()
+    }
+}
+
+impl<
+    Next,
+    ChainNext,
+    EntityType,
+    Attr,
+    const STAG: EntityTag,
+    const RTAG: EntityTag,
+    const ETAG: EntityTag
+> ShedNext<ETAG, EntityType, Next> for ConstraintChain<STAG, RTAG, Attr, ChainNext>
+    where
+        Attr: BaseAttribute,
+        ChainNext: ShedNext<ETAG, EntityType, Next> + ConstraintT,
+        EntityType: ConstraintEntity + 'static,
+{
+    fn shed(self) -> (EntityType, Next) {
+        self.next.shed()
     }
 }

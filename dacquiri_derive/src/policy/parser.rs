@@ -153,19 +153,19 @@ impl Parse for Entities {
 pub(crate) struct EntityDeclaration {
     pub entity_name: Ident,
     _colon_token: Token![:],
-    _entity_type: Path,
+    pub entity_type: Path,
 }
 
 impl Parse for EntityDeclaration {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let entity_name = input.parse()?;
         let _colon_token = input.parse()?;
-        let _entity_type = input.parse()?;
+        let entity_type = input.parse()?;
 
         let declaration = Self {
             entity_name,
             _colon_token,
-            _entity_type,
+            entity_type,
         };
 
         Ok(declaration)

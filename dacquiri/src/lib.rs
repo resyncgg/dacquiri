@@ -7,6 +7,8 @@
 #![feature(trait_alias)]
 #![feature(marker_trait_attr)]
 #![feature(explicit_generic_args_with_impl_trait)]
+#![feature(negative_impls)]
+#![feature(auto_traits)]
 
 #![doc = include_str!("../README.md")]
 
@@ -17,6 +19,8 @@ mod acquire;
 mod has;
 pub mod prelude;
 mod constraint;
+mod store;
+mod private;
 
 #[doc(hidden)]
 pub const DEFAULT_ELEMENT_TAG: &str = "___";
