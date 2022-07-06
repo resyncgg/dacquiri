@@ -28,8 +28,8 @@ fn create_test_accounts(bank: BankHandle, bank_admin: BankAdmin) -> BankResult<(
     let mut account_creator = bank_admin
         .into_entity::<"admin">()
         .add_entity::<_, "bank">(bank)?
-        .constrain_with_resource::<AssignedBankAdmin, "admin", "bank">()?
-        .constrain_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
+        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?
+        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
 
     let account_one = account_creator.create_account(ACCOUNT_ONE_PASSWORD);
     let account_two = account_creator.create_account(ACCOUNT_TWO_PASSWORD);
@@ -41,7 +41,7 @@ fn deposit_money(bank: BankHandle, account: &AccountID, amount: u64) -> BankResu
     let mut depositor = (*account)
         .into_entity::<"account">()
         .add_entity::<_, "bank">(bank)?
-        .constrain_with_resource::<NotFrozen, "account", "bank">()?;
+        .prove_with_resource::<NotFrozen, "account", "bank">()?;
 
     let _ = depositor.deposit(amount)?;
 

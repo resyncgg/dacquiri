@@ -6,9 +6,9 @@
 #![feature(generic_associated_types)]
 #![feature(trait_alias)]
 #![feature(marker_trait_attr)]
-#![feature(explicit_generic_args_with_impl_trait)]
 #![feature(negative_impls)]
 #![feature(auto_traits)]
+#![feature(rustc_attrs)]
 
 #![doc = include_str!("../README.md")]
 

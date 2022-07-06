@@ -3,6 +3,7 @@
 #![feature(generic_associated_types)]
 #![feature(adt_const_params)]
 #![feature(generic_arg_infer)]
+#![feature(rustc_attrs)]
 
 mod models;
 mod attributes;
@@ -20,7 +21,7 @@ fn main() -> Result<(), AuthorizationError> {
 
     let enabled_user = user
         .into_entity::<"user">()
-        .constrain::<Enabled, "user">()?;
+        .prove::<Enabled, "user">()?;
 
     enabled_user.print_name();
 
