@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "dacquiri"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -66,7 +66,7 @@ dependencies = [
 
 [[package]]
 name = "dacquiri_derive"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "proc-macro2",
  "quote",
