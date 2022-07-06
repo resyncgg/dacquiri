@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 authors = ["d0nut <d0nut@resync.gg>"]
 description = "An authorization framework with compile-time enforcement."
