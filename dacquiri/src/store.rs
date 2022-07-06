@@ -7,7 +7,7 @@ use crate::has::{HasEntityWithType, ShedNext};
 use crate::private::PrivateConstraintT;
 
 pub struct ConstraintStore {
-    entity_map: FxHashMap<&'static str, Box<dyn Any>>
+    entity_map: FxHashMap<&'static str, Box<dyn Any + Send>>
 }
 
 impl ConstraintStore {
