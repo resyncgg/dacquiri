@@ -14,7 +14,7 @@ impl<T, C> AcquireAttributeWithResourceAndContext<C> for T
 
 #[async_trait]
 pub trait AcquireAttributeWithResourceAndContext<C: Send>: Sized + ConstraintT {
-    async fn constrain_with_resource_and_context_async<
+    async fn prove_with_resource_and_context_async<
         'ctx,
         Attr,
         const STAG: EntityTag,
@@ -36,7 +36,7 @@ pub trait AcquireAttributeWithResourceAndContext<C: Send>: Sized + ConstraintT {
         Ok(ConstraintChain::<_, _, _, _>::new(self))
     }
 
-    fn constrain_with_resource_and_context<
+    fn prove_with_resource_and_context<
         'ctx,
         Attr,
         const STAG: EntityTag,

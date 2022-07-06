@@ -3,6 +3,7 @@
 #![feature(generic_associated_types)]
 #![feature(adt_const_params)]
 #![feature(generic_arg_infer)]
+#![feature(rustc_attrs)]
 
 /// In this demo, we have a bank, a bank admin, and two accounts at the bank.
 /// The first account is going to send some money over to the second account.
@@ -21,7 +22,7 @@
 
 use std::time::Duration;
 use dacquiri::prelude::*;
-use crate::bank::{BankAdmin, BankResult};
+use crate::bank::{AccountID, BankAdmin, BankHandle, BankResult};
 
 use crate::bank::attributes::*;
 use crate::bank::policies::*;
@@ -45,13 +46,13 @@ fn main() -> BankResult<()> {
     let mut sender = account_one
         .into_entity::<"account">()
         .add_entity::<_, "bank">(bank.clone())?
-        .constrain_with_resource::<NotFrozen, "account", "bank">()?
-        .constrain_with_resource_and_context::<Authenticated, "account", "bank">(ACCOUNT_ONE_PASSWORD)?;
+        .prove_with_resource::<NotFrozen, "account", "bank">()?
+        .prove_with_resource_and_context::<Authenticated, "account", "bank">(ACCOUNT_ONE_PASSWORD)?;
 
     let mut receiver = account_two
         .into_entity::<"account">()
         .add_entity::<_, "bank">(bank.clone())?
-        .constrain_with_resource::<NotFrozen, "account", "bank">()?;
+        .prove_with_resource::<NotFrozen, "account", "bank">()?;
 
     send_money_handler(
         &mut sender,
@@ -59,6 +60,7 @@ fn main() -> BankResult<()> {
         12
     )?;
 
+    let _ = create_account_handler(bank.clone(), bank_admin.clone())?;
     let leftover_balance = close_account_handler(sender, bank_admin)?;
 
     println!("${leftover_balance} is your leftover balance. Have a great day!");
@@ -85,6 +87,21 @@ fn send_money_handler(
     }
 }
 
+fn create_account_handler(
+    bank_handle: BankHandle,
+    bank_admin: BankAdmin
+) -> BankResult<AccountID> {
+    println!("Creating account");
+
+    let mut authorized_account_closing = bank_handle
+        .into_entity::<"bank">()
+        .add_entity::<_, "admin">(bank_admin)?
+        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?
+        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
+
+    Ok(authorized_account_closing.create_account("newpassword123"))
+}
+
 fn close_account_handler(
     closing_account: impl AuthenticatedAccountPolicy,
     bank_admin: BankAdmin
@@ -95,8 +112,8 @@ fn close_account_handler(
 
     let authorized_account_closing = closing_account
         .add_entity::<_, "admin">(bank_admin)?
-        .constrain_with_resource::<AssignedBankAdmin, "admin", "bank">()?
-        .constrain_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
+        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?
+        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
 
     println!("Account closing - Approved.");
 
