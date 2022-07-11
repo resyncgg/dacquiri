@@ -186,7 +186,7 @@ async fn main() -> Result<(), String> {
     let mut checked_user = user
         .try_grant::<UserIsEnabled>()?
         .try_grant_with_resource_and_context_async::<UserIsTeamMember, _>(team, &mut conn).await?;
-    leave_my_account(&mut checked_user).await
+    leave_my_team(&mut checked_user).await
 }
 async fn leave_my_team(user: impl TeamMember) -> Result<(), String> {
     // you can't call `.leave_team()` if you're not
