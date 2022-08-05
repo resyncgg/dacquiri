@@ -1,7 +1,9 @@
 use std::collections::HashSet;
-use syn::{Token, TypeParamBound};
+use proc_macro2::Span;
+use syn::{ConstParam, Token, TypeParamBound};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
+use syn::{Ident, parse_quote};
 use crate::policy::entity_set::{EntityRef, EntitySet};
 use super::clauses::Clause;
 
@@ -19,6 +21,20 @@ impl Context {
         }
 
         trait_bound
+    }
+
+    pub(crate) fn generate_context_const_generics(&self) -> Punctuated<ConstParam, Token![,]> {
+        let mut const_generics = Punctuated::new();
+
+        for entity in self.common_entities() {
+            let entity_name = Ident::new(&entity.to_string(), Span::call_site());
+
+            const_generics.push(parse_quote! {
+                const #entity_name: &'static str
+            });
+        }
+
+        const_generics
     }
 }
 

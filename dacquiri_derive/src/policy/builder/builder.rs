@@ -1,10 +1,11 @@
+use std::collections::HashSet;
 use std::fmt::Debug;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{ConstParam, Generics, ItemTrait, TypeParamBound, LitStr};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
-use crate::policy::entity_set::EntitySet;
+use crate::policy::entity_set::{EntityRef, EntitySet};
 use crate::policy::parser::{EntityDeclaration, Policy};
 use crate::policy::parser::context::Context;
 
@@ -79,22 +80,18 @@ impl ToTokens for PolicyBuilder {
 
         // implement 'policy marker' for 'context's
         for context in &self.policy.contexts {
+            let context_const_generics = context.generate_context_const_generics();
+            let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(context.common_entities());
+
             let mut context_trait_bounds = context.generate_context_trait_bound();
             context_trait_bounds.extend(policy_common_entity_trait_bounds.clone());
 
             tokens.extend(quote! {
-                impl<T, #policy_const_generics_definition > #policy_marker_ident #policy_const_generics_invocation for T
+                impl<T, #context_const_generics > #policy_marker_ident #policy_marker_const_generics for T
                     where
                         T: #context_trait_bounds {}
             });
         }
-        //
-        // tokens.extend(quote! {
-        //     #[allow(non_upper_case_globals)]
-        //     impl<T, #const_bound_without_defaults > #policy_ident #const_generics_invoke for T
-        //         where
-        //             T: #policy_trait_bounds {}
-        // });
     }
 }
 
@@ -190,6 +187,25 @@ impl PolicyBuilder {
         let const_generics_invoke = self.generate_const_generics(|entity_name| entity_name.clone());
 
         parse_quote! { < #const_generics_invoke > }
+    }
+
+    fn generate_policy_marker_const_generics_invoke(&self, context_common_entities: HashSet<EntityRef>) -> TokenStream {
+        let common_entities: HashSet<String> = context_common_entities.into_iter()
+            .map(|entity| entity.to_string())
+            .collect();
+
+        let const_generics_invoke = self.generate_const_generics(|entity_name| {
+            if common_entities.contains(&entity_name.to_string()) {
+                quote! { #entity_name }
+            } else {
+                let entity_name_str = entity_name.to_token_stream().to_string();
+                let entity_name_lit_str = LitStr::new(&entity_name_str, Span::call_site());
+
+                quote! { #entity_name_lit_str }
+            }
+        });
+
+        quote! { < #const_generics_invoke > }
     }
 }
 

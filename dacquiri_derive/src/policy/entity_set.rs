@@ -10,6 +10,12 @@ impl From<String> for EntityRef {
     }
 }
 
+impl ToString for EntityRef {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
 pub(crate) trait EntitySet {
     fn common_entities(&self) -> HashSet<EntityRef>;
 }

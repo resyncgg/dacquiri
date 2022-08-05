@@ -37,9 +37,7 @@ fn main() -> Result<(), AuthorizationError> {
         .into_entity::<"user">()
         .prove::<Admin, "user">()?;
 
-
-
-    EnabledUserPolicy::<"user">::print_name(&admin_user);
+    admin_user.print_name();
 
     Ok(())
 }
