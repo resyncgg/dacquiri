@@ -1,12 +1,25 @@
-use syn::Token;
+use std::collections::HashSet;
+use syn::{Token, TypeParamBound};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
+use crate::policy::entity_set::{EntityRef, EntitySet};
 use super::clauses::Clause;
-
 
 /// A branch in the policy where, if all conditions are met, the caller is considered authorized
 pub struct Context {
     clauses: Vec<Clause>,
+}
+
+impl Context {
+    pub(crate) fn generate_context_trait_bound(&self) -> Punctuated<TypeParamBound, Token![+]> {
+        let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
+
+        for clause in &self.clauses {
+            trait_bound.push(clause.generate_clause_trait_bound());
+        }
+
+        trait_bound
+    }
 }
 
 impl Parse for Context {
@@ -20,5 +33,14 @@ impl Parse for Context {
         Ok(Self {
             clauses
         })
+    }
+}
+
+impl EntitySet for Context {
+    fn common_entities(&self) -> HashSet<EntityRef> {
+        self.clauses.iter()
+            .map(|clause| clause.common_entities())
+            .flatten()
+            .collect()
     }
 }

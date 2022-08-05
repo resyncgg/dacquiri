@@ -1,8 +1,10 @@
+use std::collections::HashSet;
 use syn::{
     Ident,
     Token,
 };
 use syn::parse::{Parse, ParseStream};
+use crate::policy::entity_set::{EntityRef, EntitySet};
 use crate::policy::parser::IsKeyword;
 
 
@@ -54,5 +56,18 @@ impl Parse for ConstraintResource {
             _for_token,
             resource_id
         })
+    }
+}
+
+impl EntitySet for Constraint {
+    fn common_entities(&self) -> HashSet<EntityRef> {
+        let mut entities = HashSet::new();
+        entities.insert(self.subject_id.to_string().into());
+
+        if let Some(resource) = &self.resource_constraint {
+            entities.insert(resource.resource_id.to_string().into());
+        }
+
+        entities
     }
 }

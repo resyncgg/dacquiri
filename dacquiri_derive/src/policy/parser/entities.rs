@@ -8,6 +8,23 @@ use syn::punctuated::Punctuated;
 
 
 pub(crate) struct Entities {
+    /*
+        todo: allow marking entities as optional or mandatory
+
+        Also, make sure to validate that all optional elements are not found in *all* branches
+             ^-- maybe do this?
+
+        proposed syntax:
+        #[policy(
+            entities = (
+                user: Account?,         // <-- optional
+                service: ServiceAuth?,  // <-- optional,
+                bank: Bank              // <-- mandatory
+            ),
+            // ...
+         )]
+
+     */
     pub(crate) declarations: Vec<EntityDeclaration>
 }
 

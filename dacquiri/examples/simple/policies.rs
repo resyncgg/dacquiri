@@ -1,13 +1,22 @@
 use dacquiri::prelude::*;
-use crate::attributes::Enabled;
+use crate::attributes::{
+    Admin,
+    Enabled,
+    Hon
+};
 use crate::models::User;
 
 #[policy(
     entities = (
-        user: User
+        user: User,
+        foo: String
     ),
-    constraints = (
-        user is Enabled
+    context = (
+        user is Enabled,
+        foo is Hon
+    ),
+    context = (
+        user is Admin
     )
 )]
 pub trait EnabledUserPolicy {

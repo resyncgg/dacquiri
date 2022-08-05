@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use syn::{
     Ident,
     Token,
 };
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
+use crate::policy::entity_set::{EntityRef, EntitySet};
 
 
 pub(crate) struct DependentPolicy {
@@ -25,5 +27,16 @@ impl Parse for DependentPolicy {
             policy_name,
             entities
         })
+    }
+}
+
+impl EntitySet for DependentPolicy {
+    fn common_entities(&self) -> HashSet<EntityRef> {
+        /*
+            note:
+                we can't know which of the passed in entities are actually used when validating
+                the policy without a specific analysis of that policy's definition
+         */
+        HashSet::new()
     }
 }

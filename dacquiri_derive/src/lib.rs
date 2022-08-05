@@ -1,4 +1,4 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
