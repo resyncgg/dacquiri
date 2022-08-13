@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::ops::Not;
+use std::collections::HashMap;
 use syn::TypeParamBound;
-use syn::{ConstParam, Ident};
+use syn::ConstParam;
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
 use crate::policy::entity_set::{EntityRef, EntitySet};

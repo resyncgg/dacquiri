@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Not;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -6,9 +6,7 @@ use quote::{quote, ToTokens};
 use syn::{ConstParam, Generics, ItemTrait, TypeParamBound, LitStr};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
-use crate::policy::parser::context::Context;
 use crate::policy::builder::context::ContextEntityPresence;
-use crate::policy::entity_set::{EntityRef, EntitySet};
 use crate::policy::parser::{EntityDeclaration, Policy};
 
 
@@ -83,6 +81,35 @@ impl ToTokens for PolicyBuilder {
                     T: #policy_marker_ident #policy_const_generics_invocation {}
         });
 
+        // Prove EntityProof<_, _, MARKER> => MARKER
+        tokens.extend(quote! {
+            #[allow(non_upper_case_globals)]
+            impl<
+                Next,
+                EntityType,
+                #policy_const_generics_definition,
+                const TAG: EntityTag
+            > #policy_marker_ident #policy_const_generics_invocation for EntityProof<TAG, EntityType, Next>
+                where
+                    Next: #policy_marker_ident #policy_const_generics_invocation {}
+        });
+
+        // todo: Uncomment this once compiler bug is fixed - causes ICE
+        // Prove ConstraintChain<_, _, _, MARKER> => MARKER
+        // tokens.extend(quote! {
+        //     #[allow(non_upper_case_globals)]
+        //     impl<
+        //         Next,
+        //         Attr,
+        //         #policy_const_generics_definition,
+        //         const STAG: EntityTag,
+        //         const RTAG: EntityTag
+        //     > #policy_marker_ident #policy_const_generics_invocation for ConstraintChain<STAG, RTAG, Attr, Next>
+        //         where
+        //             Attr: BaseAttribute,
+        //             Next: #policy_marker_ident #policy_const_generics_invocation {}
+        // });
+
         // implement 'policy marker' for 'context's
         for context in &self.policy.contexts {
             let entity_map = context.generate_entity_requirement_map(self.get_entities());
@@ -90,7 +117,7 @@ impl ToTokens for PolicyBuilder {
             let context_const_generics = context.generate_const_generics(&entity_map);
             let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(&entity_map);
 
-            let mut context_trait_bounds = context.generate_context_trait_bound(&entity_map);
+            let context_trait_bounds = context.generate_context_trait_bound(&entity_map);
 
             tokens.extend(quote! {
                 #[allow(non_upper_case_globals)]

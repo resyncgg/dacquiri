@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use proc_macro2::Span;
 use quote::ToTokens;
 use syn::{
@@ -6,7 +5,6 @@ use syn::{
     Token,
 };
 use syn::parse::{Parse, ParseStream};
-use crate::policy::entity_set::{EntityRef, EntitySet};
 
 use super::{
     ENTITIES_KEYWORD,
@@ -122,20 +120,5 @@ impl Parse for Policy {
         };
 
         Ok(policy)
-    }
-}
-
-impl EntitySet for Policy {
-    fn entities(&self) -> HashSet<EntityRef> {
-        // todo: consider a union with any non-referenced entities in the defined entities
-        self.contexts.iter()
-            .map(|context| context.entities())
-            .reduce(|current, next| {
-                // intersect all of the entity sets to find the common entities as defined on the policy and
-                current.intersection(&next)
-                    .map(|elem| elem.clone())
-                    .collect()
-            })
-            .unwrap_or(HashSet::new())
     }
 }

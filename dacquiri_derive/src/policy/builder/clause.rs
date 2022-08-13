@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::TypeParamBound;
-use syn::Ident;
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote, LitStr};
 use crate::policy::builder::context::ContextEntityPresence;

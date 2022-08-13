@@ -1,9 +1,7 @@
 use std::collections::HashSet;
-use proc_macro2::Span;
-use syn::{ConstParam, Token, TypeParamBound};
+use syn::Token;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{Ident, parse_quote};
 use crate::policy::entity_set::{EntityRef, EntitySet};
 use super::clauses::Clause;
 

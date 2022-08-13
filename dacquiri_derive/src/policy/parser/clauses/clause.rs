@@ -1,11 +1,5 @@
-use std::collections::{HashMap, HashSet};
-use quote::ToTokens;
+use std::collections::HashSet;
 use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
-use syn::Token;
-use syn::TypeParamBound;
-use syn::parse_quote;
-use syn::Ident;
 use crate::policy::entity_set::{EntityRef, EntitySet};
 use super::{
     Constraint,
@@ -19,7 +13,6 @@ pub(crate) enum Clause {
 
 impl Parse for Clause {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        // todo: probably need to peek this stream since parse likely consumes part of the stream
         if input.fork().parse::<Constraint>().is_ok() {
             input.parse::<Constraint>().map(|constraint| Clause::Constraint(constraint))
         } else {
