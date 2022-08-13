@@ -60,7 +60,7 @@ impl Parse for ConstraintResource {
 }
 
 impl EntitySet for Constraint {
-    fn common_entities(&self) -> HashSet<EntityRef> {
+    fn entities(&self) -> HashSet<EntityRef> {
         let mut entities = HashSet::new();
         entities.insert(self.subject_id.to_string().into());
 

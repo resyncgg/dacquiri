@@ -13,30 +13,11 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn generate_context_trait_bound(&self) -> Punctuated<TypeParamBound, Token![+]> {
-        let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
-
-        for clause in &self.clauses {
-            trait_bound.push(clause.generate_clause_trait_bound());
-        }
-
-        trait_bound
-    }
-
-    pub(crate) fn generate_context_const_generics(&self) -> Punctuated<ConstParam, Token![,]> {
-        let mut const_generics = Punctuated::new();
-
-        for entity in self.common_entities() {
-            let entity_name = Ident::new(&entity.to_string(), Span::call_site());
-
-            const_generics.push(parse_quote! {
-                const #entity_name: &'static str
-            });
-        }
-
-        const_generics
+    pub(crate) fn clauses(&self) -> &Vec<Clause> {
+        &self.clauses
     }
 }
+
 
 impl Parse for Context {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -53,9 +34,9 @@ impl Parse for Context {
 }
 
 impl EntitySet for Context {
-    fn common_entities(&self) -> HashSet<EntityRef> {
+    fn entities(&self) -> HashSet<EntityRef> {
         self.clauses.iter()
-            .map(|clause| clause.common_entities())
+            .map(|clause| clause.entities())
             .flatten()
             .collect()
     }

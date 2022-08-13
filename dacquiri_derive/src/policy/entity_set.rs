@@ -17,5 +17,5 @@ impl ToString for EntityRef {
 }
 
 pub(crate) trait EntitySet {
-    fn common_entities(&self) -> HashSet<EntityRef>;
+    fn entities(&self) -> HashSet<EntityRef>;
 }

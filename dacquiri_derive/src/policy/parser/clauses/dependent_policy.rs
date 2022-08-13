@@ -31,11 +31,14 @@ impl Parse for DependentPolicy {
 }
 
 impl EntitySet for DependentPolicy {
-    fn common_entities(&self) -> HashSet<EntityRef> {
+    fn entities(&self) -> HashSet<EntityRef> {
         /*
             note:
                 we can't know which of the passed in entities are actually used when validating
-                the policy without a specific analysis of that policy's definition
+                the dependent policy without a specific analysis of that policy's definition.
+
+                We'll rely on the implementer of the parent policy to specify the entities that should
+                be required to ensure a specific context is satisfiable
          */
         HashSet::new()
     }

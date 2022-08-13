@@ -1,22 +1,13 @@
 use dacquiri::prelude::*;
-use crate::attributes::{
-    Admin,
-    Enabled,
-    Hon
-};
+use crate::attributes::Enabled;
 use crate::models::User;
 
 #[policy(
     entities = (
-        user: User,
-        foo: String
+        user: User
     ),
     context = (
-        user is Enabled,
-        foo is Hon
-    ),
-    context = (
-        user is Admin
+        user is Enabled
     )
 )]
 pub trait EnabledUserPolicy {
@@ -26,3 +17,13 @@ pub trait EnabledUserPolicy {
         println!("My name is: {}", enabled_user.get_name());
     }
 }
+
+#[policy(
+    entities = (
+        user: User?
+    ),
+    context = (
+        EnabledUserPolicy(user)
+    )
+)]
+pub trait TestPolicy {}

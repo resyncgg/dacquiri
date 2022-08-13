@@ -5,10 +5,6 @@ use dacquiri::prelude::ConstraintError;
 pub enum AuthorizationError {
     #[error("User is not enabled.")]
     UserNotEnabled,
-    #[error("User is not admin.")]
-    UserIsNotAdmin,
-    #[error("Message is not 'hon'.")]
-    MessageIsNotHon,
     #[error("General error occurred.")]
     GeneralError,
 }

@@ -4,6 +4,7 @@
 #![feature(adt_const_params)]
 #![feature(generic_arg_infer)]
 #![feature(rustc_attrs)]
+#![feature(marker_trait_attr)]
 
 /// In this demo, we have a bank, a bank admin, and two accounts at the bank.
 /// The first account is going to send some money over to the second account.
@@ -112,8 +113,8 @@ fn close_account_handler(
 
     let authorized_account_closing = closing_account
         .add_entity::<_, "admin">(bank_admin)?
-        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?
-        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
+        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?
+        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?;
 
     println!("Account closing - Approved.");
 

@@ -1,7 +1,7 @@
 mod policy;
 mod entities;
 pub(crate) mod context;
-mod clauses;
+pub(crate) mod clauses;
 
 pub(crate) use policy::Policy;
 pub(crate) use entities::EntityDeclaration;

@@ -20,4 +20,12 @@ pub trait PrivateConstraintT {
     fn _private_get_entity<T, const ETAG: EntityTag>(&mut self) -> T
         where
             T: ConstraintEntity + 'static;
+
+    fn _private_try_get_entity_ref<T, const ETAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static;
+
+    fn _private_try_get_entity_mut<T, const ETAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static;
 }

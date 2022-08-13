@@ -45,10 +45,12 @@ impl Parse for Entities {
 /// user: User
 /// team_a: Team
 /// team_b: Team
+#[derive(Clone)]
 pub(crate) struct EntityDeclaration {
     pub entity_name: Ident,
     _colon_token: Token![:],
     pub entity_type: Path,
+    pub is_optional: bool,
 }
 
 impl Parse for EntityDeclaration {
@@ -56,11 +58,18 @@ impl Parse for EntityDeclaration {
         let entity_name = input.parse()?;
         let _colon_token = input.parse()?;
         let entity_type = input.parse()?;
+        let is_optional = input.peek(Token![?]);
+
+        if is_optional {
+            // consume the token
+            input.parse::<Token![?]>().expect("Failed to parse expected '?'");
+        }
 
         let declaration = Self {
             entity_name,
             _colon_token,
             entity_type,
+            is_optional
         };
 
         Ok(declaration)

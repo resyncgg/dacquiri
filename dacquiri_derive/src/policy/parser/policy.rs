@@ -126,10 +126,10 @@ impl Parse for Policy {
 }
 
 impl EntitySet for Policy {
-    fn common_entities(&self) -> HashSet<EntityRef> {
+    fn entities(&self) -> HashSet<EntityRef> {
         // todo: consider a union with any non-referenced entities in the defined entities
         self.contexts.iter()
-            .map(|context| context.common_entities())
+            .map(|context| context.entities())
             .reduce(|current, next| {
                 // intersect all of the entity sets to find the common entities as defined on the policy and
                 current.intersection(&next)

@@ -35,9 +35,7 @@ impl PrivateConstraintT for ConstraintStore {
     {
         self.entity_map
             .get(&ETAG)
-            .and_then(|boxed| {
-                boxed.downcast_ref()
-            })
+            .and_then(|boxed| boxed.downcast_ref())
             .expect("This should be impossible!!!")
     }
 
@@ -47,9 +45,7 @@ impl PrivateConstraintT for ConstraintStore {
     {
         self.entity_map
             .get_mut(&ETAG)
-            .and_then(|boxed| {
-                boxed.downcast_mut()
-            })
+            .and_then(|boxed| boxed.downcast_mut())
             .expect("This should be impossible!!!")
     }
 
@@ -61,6 +57,20 @@ impl PrivateConstraintT for ConstraintStore {
             .remove(&ETAG)
             .and_then(|boxed| boxed.downcast().ok())
             .expect("This should be impossible!!!")
+    }
+
+    fn _private_try_get_entity_ref<T, const ETAG: EntityTag>(&self) -> ConstraintResult<&T> where T: ConstraintEntity + 'static {
+        self.entity_map
+            .get(&ETAG)
+            .and_then(|boxed| boxed.downcast_ref())
+            .ok_or(ConstraintError::EntityDoesNotExist)
+    }
+
+    fn _private_try_get_entity_mut<T, const ETAG: EntityTag>(&mut self) -> ConstraintResult<&mut T> where T: ConstraintEntity + 'static {
+        self.entity_map
+            .get_mut(&ETAG)
+            .and_then(|boxed| boxed.downcast_mut())
+            .ok_or(ConstraintError::EntityDoesNotExist)
     }
 }
 
@@ -89,6 +99,20 @@ impl ConstraintT for ConstraintStore {
             Self: HasEntityWithType<TAG, T>
     {
         self._private_get_entity_mut::<T, TAG>()
+    }
+
+    fn try_get_entity<T, const TAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_ref::<T, TAG>()
+    }
+
+    fn try_get_entity_mut<T, const TAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_mut::<T, TAG>()
     }
 }
 
@@ -161,6 +185,20 @@ impl<
     {
         self.next._private_get_entity::<T, TAG>()
     }
+
+    fn _private_try_get_entity_ref<T, const TAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_try_get_entity_ref::<T, TAG>()
+    }
+
+    fn _private_try_get_entity_mut<T, const TAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_try_get_entity_mut::<T, TAG>()
+    }
 }
 
 impl<
@@ -193,5 +231,19 @@ impl<
             Self: HasEntityWithType<TAG, T>
     {
         self._private_get_entity_mut::<T, TAG>()
+    }
+
+    fn try_get_entity<T, const TAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_ref::<T, TAG>()
+    }
+
+    fn try_get_entity_mut<T, const TAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_mut::<T, TAG>()
     }
 }

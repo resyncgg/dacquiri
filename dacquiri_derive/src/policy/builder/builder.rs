@@ -1,13 +1,15 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
+use std::ops::Not;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{ConstParam, Generics, ItemTrait, TypeParamBound, LitStr};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
+use crate::policy::parser::context::Context;
+use crate::policy::builder::context::ContextEntityPresence;
 use crate::policy::entity_set::{EntityRef, EntitySet};
 use crate::policy::parser::{EntityDeclaration, Policy};
-use crate::policy::parser::context::Context;
 
 
 #[derive(Debug)]
@@ -48,7 +50,8 @@ impl ToTokens for PolicyBuilder {
         let policy_ident = self.policy_ident();
         let policy_marker_ident = self.policy_marker_ident();
         let policy_trait_bounds = self.policy_trait_bounds();
-        let policy_common_entity_trait_bounds = self.policy_common_entity_trait_bounds();
+        let marker_trait_bounds = self.marker_trait_bounds();
+
         let policy_const_generics_invocation = self.generate_const_generic_invocation();
         let policy_const_generics_definition = self.generate_const_generics_definition();
         let policy_const_generics_with_defaults: Generics = {
@@ -68,25 +71,29 @@ impl ToTokens for PolicyBuilder {
 
         // write the marker trait
         tokens.extend(quote! {
-            #[marker] pub trait #policy_marker_ident #policy_const_generics_with_defaults: #policy_common_entity_trait_bounds {}
+            #[allow(non_upper_case_globals)]
+            #[marker] pub trait #policy_marker_ident #policy_const_generics_with_defaults: #marker_trait_bounds {}
         });
 
         // implement 'policy' for all 'policy marker'
-        tokens.extend(quote!{
-            impl<T, #policy_const_generics_definition > #policy_ident #policy_const_generics_invocation for T
+        tokens.extend(quote! {
+            #[allow(non_upper_case_globals)]
+            impl< T, #policy_const_generics_definition > #policy_ident #policy_const_generics_invocation for T
                 where
                     T: #policy_marker_ident #policy_const_generics_invocation {}
         });
 
         // implement 'policy marker' for 'context's
         for context in &self.policy.contexts {
-            let context_const_generics = context.generate_context_const_generics();
-            let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(context.common_entities());
+            let entity_map = context.generate_entity_requirement_map(self.get_entities());
 
-            let mut context_trait_bounds = context.generate_context_trait_bound();
-            context_trait_bounds.extend(policy_common_entity_trait_bounds.clone());
+            let context_const_generics = context.generate_const_generics(&entity_map);
+            let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(&entity_map);
+
+            let mut context_trait_bounds = context.generate_context_trait_bound(&entity_map);
 
             tokens.extend(quote! {
+                #[allow(non_upper_case_globals)]
                 impl<T, #context_const_generics > #policy_marker_ident #policy_marker_const_generics for T
                     where
                         T: #context_trait_bounds {}
@@ -108,30 +115,30 @@ impl PolicyBuilder {
         Ident::new(&condition_name, self.policy_ident().span())
     }
 
-    /// Filters a policy's entity declarations to only include the common entities. Useful for trait bounds
-    fn common_entity_declarations(&self) -> Vec<&EntityDeclaration> {
-        let common_entities = self.policy.common_entities();
+    /// Gets the defined entities of the policy
+    fn get_entities(&self) -> &Vec<EntityDeclaration> {
+        &self.policy
+            .entities
+            .declarations
+    }
 
-        self.policy.entities.declarations
+    fn get_required_entities(&self) -> Vec<&EntityDeclaration> {
+        self.get_entities()
             .iter()
-            .filter(|EntityDeclaration { entity_name, .. }| {
-                let entity_ref = entity_name.to_string().into();
-
-                common_entities.contains(&entity_ref)
-            })
+            .filter(|elem| elem.is_optional.not())
             .collect()
     }
 
-    fn policy_common_entity_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
+    /// Generates the trait bounds required by all required entities
+    fn generate_required_entity_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
         let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
+        let required_entities: Vec<&EntityDeclaration> = self.get_required_entities();
 
-        for EntityDeclaration { entity_name, entity_type, .. } in &self.common_entity_declarations() {
+        for EntityDeclaration{ entity_name, entity_type, .. } in required_entities {
             trait_bound.push(parse_quote! {
                 dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
             });
         }
-
-        trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
 
         trait_bound
     }
@@ -145,19 +152,34 @@ impl PolicyBuilder {
         // Preserve any explicit trait bounds
         trait_bound.extend(self.item_trait.supertraits.clone());
 
-        trait_bound.push(parse_quote! { Sized });
-        trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
         trait_bound.push(parse_quote! { #policy_marker_ident #policy_condition_const_generics });
 
-        for EntityDeclaration { entity_name, entity_type, .. } in &self.common_entity_declarations() {
-            trait_bound.push(parse_quote! {
-                dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
-            });
+        trait_bound
+    }
+
+    /// Generates the trait bounds found on the marker policy's definition
+    fn marker_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
+        let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
+
+        trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
+        trait_bound.push(parse_quote! { Sized });
+
+        // Explicitly add HasConstraint bounds if only 1 context is specified to benefit from `impl <trait>` syntax
+        match self.policy.contexts.first() {
+            // todo: Update this to determined the min shared constraints across all contexts to share
+            Some(context) if self.policy.contexts.len() == 1 => {
+                let entity_map = context.generate_entity_requirement_map(self.get_entities());
+                trait_bound.extend(context.generate_context_trait_bound(&entity_map));
+            },
+            _ => {
+                trait_bound.extend(self.generate_required_entity_trait_bounds());
+            }
         }
 
         trait_bound
     }
 
+    /// Generates const generics based on all defined entities and a transform function
     fn generate_const_generics<F, O>(&self, transform: F) -> Punctuated<O, Token![,]>
         where
             F: Fn(&Ident) -> O
@@ -168,12 +190,14 @@ impl PolicyBuilder {
             .collect()
     }
 
+    /// Generates const generics definition of the form `<const e1: &'static str, ...>`
     fn generate_const_generics_definition(&self) -> Punctuated<ConstParam, Token![,]> {
         self.generate_const_generics(|entity_name| {
             parse_quote! { const #entity_name: &'static str}
         })
     }
 
+    /// Generates const generics definition with default token values of the form `<const e1: &'static str = "e1", ...>`
     fn generate_const_generics_definition_with_defaults(&self) -> Punctuated<ConstParam, Token![,]> {
         self.generate_const_generics(|entity_name| {
             let entity_name_str = entity_name.to_token_stream().to_string();
@@ -189,74 +213,23 @@ impl PolicyBuilder {
         parse_quote! { < #const_generics_invoke > }
     }
 
-    fn generate_policy_marker_const_generics_invoke(&self, context_common_entities: HashSet<EntityRef>) -> TokenStream {
-        let common_entities: HashSet<String> = context_common_entities.into_iter()
-            .map(|entity| entity.to_string())
-            .collect();
-
+    fn generate_policy_marker_const_generics_invoke(&self, entity_map: &HashMap<String, ContextEntityPresence>) -> TokenStream {
         let const_generics_invoke = self.generate_const_generics(|entity_name| {
-            if common_entities.contains(&entity_name.to_string()) {
-                quote! { #entity_name }
-            } else {
-                let entity_name_str = entity_name.to_token_stream().to_string();
-                let entity_name_lit_str = LitStr::new(&entity_name_str, Span::call_site());
+            match entity_map.get(&entity_name.to_string()) {
+                Some(ContextEntityPresence::Required(EntityDeclaration { entity_name, .. })) => {
 
-                quote! { #entity_name_lit_str }
+                    quote! { #entity_name }
+                },
+                Some(ContextEntityPresence::Optional(entity_ref)) => {
+                    let entity_name_str = entity_ref.to_string();
+                    let entity_name_lit_str = LitStr::new(&entity_name_str, Span::call_site());
+
+                    quote! { #entity_name_lit_str }
+                },
+                None => unreachable!("Entity not found in entity_map")
             }
         });
 
         quote! { < #const_generics_invoke > }
     }
 }
-
-//
-// impl ToTokens for RequirementBuilder {
-//     fn to_tokens(&self, tokens: &mut TokenStream) {
-//         let trait_ident = &self.item_trait.ident;
-//         let trait_bound = self.generate_trait_bounds();
-//
-//         tokens.extend(self.item_trait.clone().into_token_stream());
-//         tokens.extend(quote! {
-//             impl<T> #trait_ident for T
-//                 where
-//                     T: #trait_bound {}
-//         });
-//     }
-// }
-//
-// impl RequirementBuilder {
-//     pub(crate) fn process(&mut self) {
-//         self.item_trait.supertraits = self.generate_trait_bounds();
-//     }
-//
-//     fn generate_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
-//         let mut bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
-//         // To allow for normal trait bounds for entitlements
-//         bound.extend(self.item_trait.supertraits.clone());
-//
-//         bound.push(parse_quote! { Sized });
-//         bound.push(parse_quote! { dacquiri::prelude::AttributeChainT });
-//
-//         for requirement in &self.requirement_list {
-//             let req_name = &requirement.permission_ident;
-//             let id = match &requirement.specifier {
-//                 Some(specifier) => {
-//                     let id = &specifier.id_lit;
-//
-//                     quote! { #id }
-//                 },
-//                 None => {
-//                     quote!{ dacquiri::prelude::DEFAULT_ATTRIBUTE_TAG }
-//                 }
-//             };
-//
-//             let type_bound: TypeParamBound = parse_quote! {
-//                 dacquiri::prelude::HasAttribute<#req_name<{ #id }>, { #id }>
-//             };
-//
-//             bound.push(type_bound);
-//         }
-//
-//         bound
-//     }
-// }
