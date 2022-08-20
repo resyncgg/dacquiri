@@ -46,7 +46,7 @@ mod policy {
         entities = (
             user: User
         ),
-        context = (
+        guard = (
             user is Enabled
         )
     )]

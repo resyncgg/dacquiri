@@ -10,7 +10,7 @@
 #![feature(auto_traits)]
 #![feature(rustc_attrs)]
 
-// #![doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
 
 mod error;
 mod attribute;

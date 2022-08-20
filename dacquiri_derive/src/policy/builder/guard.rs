@@ -4,20 +4,20 @@ use syn::ConstParam;
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
 use crate::policy::entity_set::{EntityRef, EntitySet};
-use crate::policy::parser::branch::Branch;
+use crate::policy::parser::guard::Guard;
 use crate::policy::parser::EntityDeclaration;
 
-pub(crate) enum BranchEntityPresence {
+pub(crate) enum GuardEntityPresence {
     Required(EntityDeclaration),
     Optional(EntityRef)
 }
 
-impl Branch {
+impl Guard {
     pub(crate) fn generate_entity_requirement_map(
         &self,
         policy_entities: &Vec<EntityDeclaration>
-    ) -> HashMap<String, BranchEntityPresence> {
-        let mut branch_entity_map = HashMap::new();
+    ) -> HashMap<String, GuardEntityPresence> {
+        let mut guard_entity_map = HashMap::new();
         // provides a map for all entities
         let policy_entity_map: HashMap<String, EntityDeclaration> = policy_entities.iter()
             .map(|entity| {
@@ -31,29 +31,29 @@ impl Branch {
             if entity.is_optional {
                 let entity_name = entity.entity_name.to_string();
 
-                branch_entity_map.insert(name.clone(), BranchEntityPresence::Optional(entity_name.into()));
+                guard_entity_map.insert(name.clone(), GuardEntityPresence::Optional(entity_name.into()));
             } else {
-                branch_entity_map.insert(name.clone(), BranchEntityPresence::Required(entity.clone()));
+                guard_entity_map.insert(name.clone(), GuardEntityPresence::Required(entity.clone()));
             }
         }
 
-        for branch_entity in self.entities() {
-            let entity_name = branch_entity.to_string();
+        for guard_entity in self.entities() {
+            let entity_name = guard_entity.to_string();
             let entity_definition = policy_entity_map
                 .get(&entity_name)
                 .expect("Missing entity definition on policy");
 
-            branch_entity_map.insert(entity_name, BranchEntityPresence::Required(entity_definition.clone()));
+            guard_entity_map.insert(entity_name, GuardEntityPresence::Required(entity_definition.clone()));
         }
 
-        branch_entity_map
+        guard_entity_map
     }
 
-    pub(crate) fn generate_const_generics(&self, entity_map: &HashMap<String, BranchEntityPresence>) -> Punctuated<ConstParam, Token![,]> {
+    pub(crate) fn generate_const_generics(&self, entity_map: &HashMap<String, GuardEntityPresence>) -> Punctuated<ConstParam, Token![,]> {
         let mut const_generics = Punctuated::new();
 
         for (_, entity_presence) in entity_map {
-            if let BranchEntityPresence::Required(EntityDeclaration { entity_name, .. }) = entity_presence {
+            if let GuardEntityPresence::Required(EntityDeclaration { entity_name, .. }) = entity_presence {
                 const_generics.push(parse_quote! {
                     const #entity_name: &'static str
                 });
@@ -63,7 +63,7 @@ impl Branch {
         const_generics
     }
 
-    pub(crate) fn generate_branch_trait_bound(&self, entity_map: &HashMap<String, BranchEntityPresence>) -> Punctuated<TypeParamBound, Token![+]> {
+    pub(crate) fn generate_guard_trait_bound(&self, entity_map: &HashMap<String, GuardEntityPresence>) -> Punctuated<TypeParamBound, Token![+]> {
         let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
         trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
 
@@ -72,7 +72,7 @@ impl Branch {
         }
 
         for (_, entity_presence) in entity_map {
-            if let BranchEntityPresence::Required(EntityDeclaration { entity_name, entity_type, .. }) = entity_presence {
+            if let GuardEntityPresence::Required(EntityDeclaration { entity_name, entity_type, .. }) = entity_presence {
                 trait_bound.push(parse_quote! {
                     dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
                 });

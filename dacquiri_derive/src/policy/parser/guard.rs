@@ -6,18 +6,18 @@ use crate::policy::entity_set::{EntityRef, EntitySet};
 use super::clauses::Clause;
 
 /// A branch in the policy where, if all conditions are met, the caller is considered authorized
-pub struct Branch {
+pub struct Guard {
     clauses: Vec<Clause>,
 }
 
-impl Branch {
+impl Guard {
     pub(crate) fn clauses(&self) -> &Vec<Clause> {
         &self.clauses
     }
 }
 
 
-impl Parse for Branch {
+impl Parse for Guard {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
         syn::parenthesized!(content in input);
@@ -31,11 +31,10 @@ impl Parse for Branch {
     }
 }
 
-impl EntitySet for Branch {
+impl EntitySet for Guard {
     fn entities(&self) -> HashSet<EntityRef> {
         self.clauses.iter()
-            .map(|clause| clause.entities())
-            .flatten()
+            .flat_map(|clause| clause.entities())
             .collect()
     }
 }

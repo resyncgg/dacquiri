@@ -1,5 +1,5 @@
 mod builder;
-mod branch;
+mod guard;
 mod clause;
 
 pub use builder::PolicyBuilder;

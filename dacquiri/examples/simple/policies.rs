@@ -6,7 +6,7 @@ use crate::models::User;
     entities = (
         user: User
     ),
-    context = (
+    guard = (
         user is Enabled
     )
 )]

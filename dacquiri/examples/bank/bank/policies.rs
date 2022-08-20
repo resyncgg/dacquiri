@@ -7,7 +7,7 @@ use crate::bank::attributes::*;
         admin: BankAdmin,
         bank: BankHandle
     ),
-    context = (
+    guard = (
         admin is AdminAuthorized,
         admin is AssignedBankAdmin for bank
     )
@@ -27,7 +27,7 @@ pub trait AuthorizedAdminPolicy {
         account: AccountID,
         bank: BankHandle
     ),
-    context = (
+    guard = (
         account is NotFrozen for bank
     )
 )]
@@ -47,7 +47,7 @@ pub trait ActiveAccountPolicy {
         account: AccountID,
         bank: BankHandle
     ),
-    context = (
+    guard = (
         ActiveAccountPolicy(account, bank),
         account is Authenticated for bank,
     )
@@ -69,7 +69,7 @@ pub trait AuthenticatedAccountPolicy {
         bank: BankHandle,
         admin: BankAdmin
     ),
-    context = (
+    guard = (
         AuthenticatedAccountPolicy(account, bank),
         AuthorizedAdminPolicy(admin, bank)
     )
