@@ -6,7 +6,7 @@ use quote::{quote, ToTokens};
 use syn::{ConstParam, Generics, ItemTrait, TypeParamBound, LitStr};
 use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
-use crate::policy::builder::context::ContextEntityPresence;
+use crate::policy::builder::branch::BranchEntityPresence;
 use crate::policy::parser::{EntityDeclaration, Policy};
 
 
@@ -94,8 +94,32 @@ impl ToTokens for PolicyBuilder {
                     Next: #policy_marker_ident #policy_const_generics_invocation {}
         });
 
+        /*
+            The value of this implementation is that it allows policies with multiple branches
+            to add implementations and keep the ability to call into their policy's code.
+
+            The following is an example of what is not possible without this impl
+
+            ```
+            // assume this has two branches
+            #[policy(..)]
+            trait MyPolicy {
+                fn do_thing(&self) { ... }
+            }
+
+            fn guarded(caller: impl MyPolicy) {
+                let caller = caller.prove::<OtherAttribute, "entity">().unwrap();
+
+                caller.do_thing(); // <-- this is an error since MyPolicy is no longer guaranteed
+            }
+            ```
+
+            A fix for this is calling `MyPolicy::do_thing` before proving new attributes. Alternatively,
+            figuring out what properties need to be re-proved and proving them will work too. Lastly,
+            changing the `impl MyPolicy` to include the required HasConstraint will let Dacquiri implement the policy trait appropriately
+         */
         // todo: Uncomment this once compiler bug is fixed - causes ICE
-        // Prove ConstraintChain<_, _, _, MARKER> => MARKER
+        // // Prove ConstraintChain<_, _, _, MARKER> => MARKER
         // tokens.extend(quote! {
         //     #[allow(non_upper_case_globals)]
         //     impl<
@@ -110,20 +134,20 @@ impl ToTokens for PolicyBuilder {
         //             Next: #policy_marker_ident #policy_const_generics_invocation {}
         // });
 
-        // implement 'policy marker' for 'context's
-        for context in &self.policy.contexts {
-            let entity_map = context.generate_entity_requirement_map(self.get_entities());
+        // implement 'policy marker' for 'branches'
+        for branch in &self.policy.branches {
+            let entity_map = branch.generate_entity_requirement_map(self.get_entities());
 
-            let context_const_generics = context.generate_const_generics(&entity_map);
+            let branch_const_generics = branch.generate_const_generics(&entity_map);
             let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(&entity_map);
 
-            let context_trait_bounds = context.generate_context_trait_bound(&entity_map);
+            let branch_trait_bounds = branch.generate_branch_trait_bound(&entity_map);
 
             tokens.extend(quote! {
                 #[allow(non_upper_case_globals)]
-                impl<T, #context_const_generics > #policy_marker_ident #policy_marker_const_generics for T
+                impl<T, #branch_const_generics > #policy_marker_ident #policy_marker_const_generics for T
                     where
-                        T: #context_trait_bounds {}
+                        T: #branch_trait_bounds {}
             });
         }
     }
@@ -191,13 +215,13 @@ impl PolicyBuilder {
         trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
         trait_bound.push(parse_quote! { Sized });
 
-        // Explicitly add HasConstraint bounds if only 1 context is specified to benefit from `impl <trait>` syntax
-        match self.policy.contexts.first() {
-            // todo: Update this to determined the min shared constraints across all contexts to share
-            Some(context) if self.policy.contexts.len() == 1 => {
-                let entity_map = context.generate_entity_requirement_map(self.get_entities());
-                trait_bound.extend(context.generate_context_trait_bound(&entity_map));
-            },
+        // Explicitly add HasConstraint bounds if only 1 branch is specified to benefit from `impl <trait>` syntax
+        match self.policy.branches.first() {
+            // todo: Update this to determined the min shared constraints across all branches to share
+            Some(branch) if self.policy.branches.len() == 1 => {
+                let entity_map = branch.generate_entity_requirement_map(self.get_entities());
+                trait_bound.extend(branch.generate_branch_trait_bound(&entity_map));
+            }
             _ => {
                 trait_bound.extend(self.generate_required_entity_trait_bounds());
             }
@@ -240,14 +264,14 @@ impl PolicyBuilder {
         parse_quote! { < #const_generics_invoke > }
     }
 
-    fn generate_policy_marker_const_generics_invoke(&self, entity_map: &HashMap<String, ContextEntityPresence>) -> TokenStream {
+    fn generate_policy_marker_const_generics_invoke(&self, entity_map: &HashMap<String, BranchEntityPresence>) -> TokenStream {
         let const_generics_invoke = self.generate_const_generics(|entity_name| {
             match entity_map.get(&entity_name.to_string()) {
-                Some(ContextEntityPresence::Required(EntityDeclaration { entity_name, .. })) => {
+                Some(BranchEntityPresence::Required(EntityDeclaration { entity_name, .. })) => {
 
                     quote! { #entity_name }
                 },
-                Some(ContextEntityPresence::Optional(entity_ref)) => {
+                Some(BranchEntityPresence::Optional(entity_ref)) => {
                     let entity_name_str = entity_ref.to_string();
                     let entity_name_lit_str = LitStr::new(&entity_name_str, Span::call_site());
 

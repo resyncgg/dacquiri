@@ -1,0 +1,44 @@
+error[E0277]: caller hasn't proven that the subject entity maintains attribute `Verified`
+  --> tests/ui/fail/simple_guarded_function.rs:19:22
+   |
+19 |     guarded_function(caller);
+   |     ---------------- ^^^^^^ help: try proving the subject entity has attribute `Verified` with `.prove()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `HasConstraint<Verified, "user", "___">` is not implemented for `ConstraintStore`
+   = help: the following other types implement trait `HasConstraint<Attr, STAG, RTAG>`:
+             <ConstraintChain<STAG, RTAG, Attr, Next> as HasConstraint<Attr, STAG, RTAG>>
+             <ConstraintChain<STAG1, RTAG1, Attr1, Next> as HasConstraint<Attr2, STAG2, RTAG2>>
+             <dacquiri::prelude::EntityProof<ETAG, EntityType, Next> as HasConstraint<Attr, STAG, RTAG>>
+   = note: required for `dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>` to implement `HasConstraint<Verified, "user", "___">`
+   = note: 1 redundant requirement hidden
+   = note: required for `ConstraintChain<"user", "___", policy::Enabled, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `HasConstraint<Verified, "user", "___">`
+note: required for `ConstraintChain<"user", "___", policy::Enabled, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `VerifiedUserPolicyMarker`
+  --> tests/ui/fail/simple_guarded_function.rs:60:5
+   |
+60 | /     #[policy(
+61 | |         entities = (
+62 | |             user: User
+63 | |         ),
+...  |
+67 | |         )
+68 | |     )]
+   | |______^
+note: required for `ConstraintChain<"user", "___", policy::Enabled, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `policy::VerifiedUserPolicy`
+  --> tests/ui/fail/simple_guarded_function.rs:60:5
+   |
+60 | /     #[policy(
+61 | |         entities = (
+62 | |             user: User
+63 | |         ),
+...  |
+67 | |         )
+68 | |     )]
+   | |______^
+note: required by a bound in `guarded_function`
+  --> tests/ui/fail/simple_guarded_function.rs:24:34
+   |
+24 | fn guarded_function(caller: impl VerifiedUserPolicy) {
+   |                                  ^^^^^^^^^^^^^^^^^^ required by this bound in `guarded_function`
+   = note: this error originates in the attribute macro `policy` (in Nightly builds, run with -Z macro-backtrace for more info)

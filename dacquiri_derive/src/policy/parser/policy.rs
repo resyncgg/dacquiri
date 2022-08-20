@@ -8,9 +8,9 @@ use syn::parse::{Parse, ParseStream};
 
 use super::{
     ENTITIES_KEYWORD,
-    CONTEXT_KEYWORD,
+    BRANCH_KEYWORD,
     entities::Entities,
-    context::Context,
+    branch::Branch,
 };
 
 
@@ -23,11 +23,11 @@ Example
         team_one: Team,
         team_two: Team,
     ),
-    context = (
+    branch = (
         ActiveTeamMember(user, team_one),
         ActiveTeamMember(user, team_two)
     ),
-    context = (
+    branch = (
         user is PlatformAdmin
     )
 )]
@@ -44,7 +44,7 @@ pub trait MultiTeamMember {
         user: User,
         team: Team
     ),
-    context = (
+    branch = (
         user is EnabledUser,
         team is EnabledTeam,
         user is TeamMember for team,
@@ -58,7 +58,7 @@ pub trait ActiveTeamMember {
 
 enum PolicyKey {
     Entities,
-    Context
+    Branch
 }
 
 impl TryFrom<Ident> for PolicyKey {
@@ -67,7 +67,7 @@ impl TryFrom<Ident> for PolicyKey {
     fn try_from(value: Ident) -> Result<Self, Self::Error> {
         match value.to_token_stream().to_string() {
             token if token == ENTITIES_KEYWORD => Ok(PolicyKey::Entities),
-            token if token == CONTEXT_KEYWORD => Ok(PolicyKey::Context),
+            token if token == BRANCH_KEYWORD => Ok(PolicyKey::Branch),
             _ => Err(())
         }
     }
@@ -87,20 +87,20 @@ impl Parse for PolicyKey {
 
 pub(crate) struct Policy {
     pub(crate) entities: Entities,
-    pub(crate) contexts: Vec<Context>
+    pub(crate) branches: Vec<Branch>
 }
 
 impl Parse for Policy {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut maybe_entities: Option<Entities> = None;
-        let mut contexts: Vec<Context> = Vec::new();
+        let mut branches: Vec<Branch> = Vec::new();
 
         while let Ok(policy_key) = input.parse() {
             let _ = input.parse::<Token![=]>()?;
 
             match policy_key {
                 PolicyKey::Entities => maybe_entities = Some(input.parse()?),
-                PolicyKey::Context => contexts.push(input.parse()?),
+                PolicyKey::Branch => branches.push(input.parse()?),
             }
 
             if input.peek(Token![,]) {
@@ -116,7 +116,7 @@ impl Parse for Policy {
 
         let policy = Policy {
             entities,
-            contexts
+            branches
         };
 
         Ok(policy)
