@@ -2,6 +2,7 @@ use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::Path;
 
+#[derive(Clone)]
 pub(crate) struct NonstandardKeyword<const KEYWORD: &'static str> {
     _keyword: Path
 }

@@ -6,6 +6,7 @@ use super::{
     DependentPolicy
 };
 
+#[derive(Hash, Eq, PartialEq, Clone)]
 pub(crate) enum Clause {
     Constraint(Constraint),
     Policy(DependentPolicy)

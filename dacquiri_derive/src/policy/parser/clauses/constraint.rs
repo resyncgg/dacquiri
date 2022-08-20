@@ -1,4 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 use syn::{
     Ident,
     Token,
@@ -11,11 +13,36 @@ use crate::policy::parser::IsKeyword;
 /// "User" is UserIsEnabled
 /// "TeamA" is TeamIsEnabled
 /// "User" is MemberOfTeam for "TeamA"
+#[derive(Clone)]
 pub(crate) struct Constraint {
     pub subject_id: Ident,
     _is_token: IsKeyword,
     pub attribute: Ident,
     pub resource_constraint: Option<ConstraintResource>
+}
+
+impl Eq for Constraint {}
+
+impl PartialEq for Constraint {
+    fn eq(&self, other: &Self) -> bool {
+        let mut self_hasher = DefaultHasher::new();
+        let mut other_hasher = DefaultHasher::new();
+
+        self.hash(&mut self_hasher);
+        other.hash(&mut other_hasher);
+
+        self_hasher.finish() == other_hasher.finish()
+    }
+}
+
+impl Hash for Constraint {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.subject_id.hash(state);
+        self.attribute.hash(state);
+        if let Some(resource) = &self.resource_constraint {
+            resource.hash(state);
+        }
+    }
 }
 
 impl Parse for Constraint {
@@ -42,9 +69,16 @@ impl Parse for Constraint {
 }
 
 /// for "TeamA"
+#[derive(Clone)]
 pub(crate) struct ConstraintResource {
     _for_token: Token![for],
     pub resource_id: Ident
+}
+
+impl Hash for ConstraintResource {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.resource_id.hash(state);
+    }
 }
 
 impl Parse for ConstraintResource {

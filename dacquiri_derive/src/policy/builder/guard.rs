@@ -76,11 +76,6 @@ impl Guard {
                 trait_bound.push(parse_quote! {
                     dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
                 });
-
-                // todo: is this needed?
-                trait_bound.push(parse_quote! {
-                    dacquiri::prelude::HasEntity<#entity_name>
-                });
             }
         }
 

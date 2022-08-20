@@ -100,7 +100,6 @@ impl Parse for Policy {
 
             match policy_key {
                 PolicyKey::Entities => maybe_entities = Some(input.parse()?),
-                // todo: only allow constraints if 2+ guards for intersection?
                 PolicyKey::Guard => guards.push(input.parse()?),
             }
 

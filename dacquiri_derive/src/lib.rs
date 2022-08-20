@@ -1,12 +1,15 @@
 // #![deny(warnings)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
+#![feature(iter_intersperse)]
 
 //! An authorization framework with compile-time enforcement.
 //!
 //! `Dacquiri-derive` makes using `Dacquiri` ergonomic.
 //!
 //! For more information on `Dacquiri`, check out its crate documentation!
+
+extern crate core;
 
 use proc_macro::TokenStream;
 

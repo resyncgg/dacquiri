@@ -74,7 +74,7 @@ mod policy {
         guard = (
             EnabledUserPolicy(user),
             user is Verified,
-        )
+        ),
     )]
     pub trait VerifiedUserPolicy {
         fn print_verified(&self) {

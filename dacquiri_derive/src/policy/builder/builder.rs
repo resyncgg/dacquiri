@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::Not;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -8,12 +8,18 @@ use syn::punctuated::Punctuated;
 use syn::{Token, parse_quote};
 use crate::policy::builder::guard::GuardEntityPresence;
 use crate::policy::parser::{EntityDeclaration, Policy};
+use crate::policy::parser::clauses::Clause;
+use thiserror::Error;
 
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum PolicyError {
+    #[error("Auto traits are not supported.")]
     AutoTraitsNotSupported,
-    GenericTraitsNotSupported
+    #[error("Generic traits are not supported.")]
+    GenericTraitsNotSupported,
+    #[error("Policies that contain more than one guard may not use dependent policies. Offending dependent policy: `{0}`")]
+    DependentPoliciesInUseOnMultiGuardPolicy(String)
 }
 
 pub struct PolicyBuilder {
@@ -57,6 +63,10 @@ impl ToTokens for PolicyBuilder {
 
             parse_quote! { < #generics > }
         };
+
+        if let Err(err) = self.validate_guards_are_legal() {
+            panic!("{err}");
+        }
 
         policy_trait.supertraits = policy_trait_bounds.clone();
         policy_trait.generics = policy_const_generics_with_defaults.clone();
@@ -184,11 +194,28 @@ impl PolicyBuilder {
     fn generate_required_entity_trait_bounds(&self) -> Punctuated<TypeParamBound, Token![+]> {
         let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
         let required_entities: Vec<&EntityDeclaration> = self.get_required_entities();
+        let common_clauses = self.calculate_policy_clauses_intersection();
+
+        let mut entity_map = HashMap::new();
+
+        for entity in self.get_entities() {
+            let entity_name = entity.entity_name.to_string();
+
+            if entity.is_optional {
+                entity_map.insert(entity_name.clone(), GuardEntityPresence::Optional(entity_name.into()));
+            } else {
+                entity_map.insert(entity_name.clone(), GuardEntityPresence::Required(entity.clone()));
+            }
+        }
 
         for EntityDeclaration{ entity_name, entity_type, .. } in required_entities {
             trait_bound.push(parse_quote! {
                 dacquiri::prelude::HasEntityWithType<#entity_name, #entity_type>
             });
+        }
+
+        for clause in common_clauses {
+            trait_bound.push(clause.generate_clause_trait_bound(&entity_map));
         }
 
         trait_bound
@@ -214,18 +241,7 @@ impl PolicyBuilder {
 
         trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
         trait_bound.push(parse_quote! { Sized });
-
-        // Explicitly add HasConstraint bounds if only 1 guard is specified to benefit from `impl <trait>` syntax
-        match self.policy.guards.first() {
-            // todo: Update this to determined the min shared constraints across all guards to share
-            Some(guard) if self.policy.guards.len() == 1 => {
-                let entity_map = guard.generate_entity_requirement_map(self.get_entities());
-                trait_bound.extend(guard.generate_guard_trait_bound(&entity_map));
-            }
-            _ => {
-                trait_bound.extend(self.generate_required_entity_trait_bounds());
-            }
-        }
+        trait_bound.extend(self.generate_required_entity_trait_bounds());
 
         trait_bound
     }
@@ -282,5 +298,44 @@ impl PolicyBuilder {
         });
 
         quote! { < #const_generics_invoke > }
+    }
+
+    fn validate_guards_are_legal(&self) -> Result<(), PolicyError> {
+        // if the policy only has 1 guard, it's fine
+        if self.policy.guards.len() == 1 {
+            return Ok(());
+        }
+
+        // if this contains a policy, it's an illegal guard
+        let dependent_policy = self.policy.guards.iter()
+            .find_map(|guard| {
+                guard.clauses().iter().find(|clause| matches!(clause, Clause::Policy(_)))
+            });
+
+        match dependent_policy {
+            Some(Clause::Policy(policy)) => {
+                Err(PolicyError::DependentPoliciesInUseOnMultiGuardPolicy(policy.to_string()))
+            },
+            _ => Ok(())
+        }
+    }
+
+    /// checks for common constraints between all guards
+    fn calculate_policy_clauses_intersection(&self) -> HashSet<Clause> {
+        let common_constraints = self.policy.guards
+            .iter()
+            .map(|guard| {
+                guard.clauses()
+                    .iter()
+                    .cloned()
+                    .collect::<HashSet<_>>()
+            })
+            .reduce(|left, right| {
+                left.intersection(&right)
+                    .cloned()
+                    .collect()
+            });
+
+        common_constraints.unwrap_or_default()
     }
 }

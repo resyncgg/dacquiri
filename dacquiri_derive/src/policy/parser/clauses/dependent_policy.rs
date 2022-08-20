@@ -8,6 +8,7 @@ use syn::punctuated::Punctuated;
 use crate::policy::entity_set::{EntityRef, EntitySet};
 
 
+#[derive(Hash, Eq, PartialEq, Clone)]
 pub(crate) struct DependentPolicy {
     pub policy_name: Ident,
     pub entities: Vec<Ident>
@@ -41,5 +42,17 @@ impl EntitySet for DependentPolicy {
                 be required to ensure a specific context is satisfiable
          */
         HashSet::new()
+    }
+}
+
+impl ToString for DependentPolicy {
+    fn to_string(&self) -> String {
+        let name = self.policy_name.to_string();
+        let arguments: String = self.entities.iter()
+            .map(|entity| entity.to_string())
+            .intersperse(", ".to_string())
+            .collect();
+
+        format!("{name}({arguments})")
     }
 }
