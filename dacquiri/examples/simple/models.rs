@@ -4,10 +4,10 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new(name: impl Into<String>, enabled: bool) -> Self {
         Self {
             name: name.into(),
-            enabled: true
+            enabled
         }
     }
 

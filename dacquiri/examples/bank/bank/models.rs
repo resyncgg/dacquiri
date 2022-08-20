@@ -26,7 +26,7 @@ impl Account {
     }
 
     pub(in crate::bank) fn check_password(&self, password: impl Into<String>) -> bool {
-        // this is not design to be secure - this is vulnerable to timing attacks
+        // this is not designed to be secure - this is vulnerable to timing attacks
 
         self.password == password.into()
     }

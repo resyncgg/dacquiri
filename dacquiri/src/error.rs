@@ -1,7 +1,8 @@
 
 #[derive(Debug)]
 pub enum ConstraintError {
-    EntityAlreadyExists
+    EntityAlreadyExists,
+    EntityDoesNotExist
 }
 
 impl From<ConstraintError> for () {

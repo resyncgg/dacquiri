@@ -9,7 +9,8 @@ pub use crate::chain::{
     ConstraintChain,
     ConstraintEntity,
     ConstraintResult,
-    ConstraintT
+    ConstraintT,
+    EntityTag
 };
 pub use crate::store::ConstraintStore;
 pub use crate::has::{
@@ -25,6 +26,7 @@ pub use crate::acquire::{
     acquire_with_resource_and_context::AcquireAttributeWithResourceAndContext
 };
 pub use crate::constraint::InitializeConstraint;
+pub use crate::store::EntityProof;
 
 #[doc(hidden)]
 pub use crate::DEFAULT_ELEMENT_TAG;

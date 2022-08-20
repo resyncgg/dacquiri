@@ -1,12 +1,12 @@
 use dacquiri::prelude::*;
-use crate::attributes::Enabled;
+use crate::attributes::*;
 use crate::models::User;
 
 #[policy(
     entities = (
         user: User
     ),
-    constraints = (
+    guard = (
         user is Enabled
     )
 )]

@@ -42,6 +42,14 @@ pub trait ConstraintT: PrivateConstraintT + Sized {
         where
             T: ConstraintEntity + 'static,
             Self: HasEntityWithType<TAG, T>;
+
+    fn try_get_entity<T, const TAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static;
+
+    fn try_get_entity_mut<T, const TAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static;
 }
 
 impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> PrivateConstraintT for ConstraintChain<STAG, RTAG, Attr, Next>
@@ -76,9 +84,28 @@ impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> PrivateConstraint
     {
         self.next._private_get_entity::<T, ETAG>()
     }
+
+    fn _private_try_get_entity_ref<T, const ETAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_try_get_entity_ref::<T, ETAG>()
+    }
+
+    fn _private_try_get_entity_mut<T, const ETAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self.next._private_try_get_entity_mut::<T, ETAG>()
+    }
 }
 
-impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> ConstraintT for ConstraintChain<STAG, RTAG, Attr, Next>
+impl<
+    const STAG: EntityTag,
+    const RTAG: EntityTag,
+    Attr,
+    Next
+> ConstraintT for ConstraintChain<STAG, RTAG, Attr, Next>
     where
         Attr: BaseAttribute,
         Next: ConstraintT,
@@ -105,6 +132,20 @@ impl<const STAG: EntityTag, const RTAG: EntityTag, Attr, Next> ConstraintT for C
             Self: HasEntityWithType<TAG, T>
     {
         self._private_get_entity_mut::<T, TAG>()
+    }
+
+    fn try_get_entity<T, const TAG: EntityTag>(&self) -> ConstraintResult<&T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_ref::<T, TAG>()
+    }
+
+    fn try_get_entity_mut<T, const TAG: EntityTag>(&mut self) -> ConstraintResult<&mut T>
+        where
+            T: ConstraintEntity + 'static
+    {
+        self._private_try_get_entity_mut::<T, TAG>()
     }
 }
 

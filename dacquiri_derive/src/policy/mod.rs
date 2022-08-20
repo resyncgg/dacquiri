@@ -1,5 +1,6 @@
 mod builder;
 mod parser;
+mod entity_set;
 
 use syn::{ItemTrait, parse_macro_input};
 use proc_macro::TokenStream;
