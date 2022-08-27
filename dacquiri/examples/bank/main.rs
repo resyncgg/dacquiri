@@ -47,13 +47,13 @@ fn main() -> BankResult<()> {
     let mut sender = account_one
         .into_entity::<"account">()
         .add_entity::<_, "bank">(bank.clone())?
-        .prove_with_resource::<NotFrozen, "account", "bank">()?
-        .prove_with_resource_and_context::<Authenticated, "account", "bank">(ACCOUNT_ONE_PASSWORD)?;
+        .prove_with_resource::<NotFrozen<_, _>, "account", "bank">()?
+        .prove_with_resource_and_context::<Authenticated<_, _>, "account", "bank">(ACCOUNT_ONE_PASSWORD)?;
 
     let mut receiver = account_two
         .into_entity::<"account">()
         .add_entity::<_, "bank">(bank.clone())?
-        .prove_with_resource::<NotFrozen, "account", "bank">()?;
+        .prove_with_resource::<NotFrozen<_, _>, "account", "bank">()?;
 
     send_money_handler(
         &mut sender,
@@ -97,8 +97,8 @@ fn create_account_handler(
     let mut authorized_account_closing = bank_handle
         .into_entity::<"bank">()
         .add_entity::<_, "admin">(bank_admin)?
-        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?
-        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?;
+        .prove_with_resource::<Assigned<_, _>, "admin", "bank">()?
+        .prove_with_context::<Authorized<_, _>, "admin">(ADMIN_PASSWORD)?;
 
     Ok(authorized_account_closing.create_account("newpassword123"))
 }
@@ -113,8 +113,8 @@ fn close_account_handler(
 
     let authorized_account_closing = closing_account
         .add_entity::<_, "admin">(bank_admin)?
-        .prove_with_context::<AdminAuthorized, "admin">(ADMIN_PASSWORD)?
-        .prove_with_resource::<AssignedBankAdmin, "admin", "bank">()?;
+        .prove_with_context::<Authorized<_, _>, "admin">(ADMIN_PASSWORD)?
+        .prove_with_resource::<Assigned<_, _>, "admin", "bank">()?;
 
     println!("Account closing - Approved.");
 

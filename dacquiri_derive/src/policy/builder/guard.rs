@@ -63,12 +63,12 @@ impl Guard {
         const_generics
     }
 
-    pub(crate) fn generate_guard_trait_bound(&self, entity_map: &HashMap<String, GuardEntityPresence>) -> Punctuated<TypeParamBound, Token![+]> {
+    pub(crate) fn generate_guard_trait_bound(&self, all_entities: &HashMap<String, EntityDeclaration>, entity_map: &HashMap<String, GuardEntityPresence>) -> Punctuated<TypeParamBound, Token![+]> {
         let mut trait_bound: Punctuated<TypeParamBound, Token![+]> = Punctuated::new();
         trait_bound.push(parse_quote! { dacquiri::prelude::ConstraintT });
 
         for clause in self.clauses() {
-            trait_bound.push(clause.generate_clause_trait_bound(&entity_map));
+            trait_bound.push(clause.generate_clause_trait_bound(all_entities, &entity_map));
         }
 
         for (_, entity_presence) in entity_map {
