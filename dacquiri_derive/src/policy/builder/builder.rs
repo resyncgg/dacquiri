@@ -128,21 +128,24 @@ impl ToTokens for PolicyBuilder {
             figuring out what properties need to be re-proved and proving them will work too. Lastly,
             changing the `impl MyPolicy` to include the required HasConstraint will let Dacquiri implement the policy trait appropriately
          */
-        // todo: Uncomment this once compiler bug is fixed - causes ICE
-        // // Prove ConstraintChain<_, _, _, MARKER> => MARKER
-        // tokens.extend(quote! {
-        //     #[allow(non_upper_case_globals)]
-        //     impl<
-        //         Next,
-        //         Attr,
-        //         #policy_const_generics_definition,
-        //         const STAG: EntityTag,
-        //         const RTAG: EntityTag
-        //     > #policy_marker_ident #policy_const_generics_invocation for ConstraintChain<STAG, RTAG, Attr, Next>
-        //         where
-        //             Attr: BaseAttribute,
-        //             Next: #policy_marker_ident #policy_const_generics_invocation {}
-        // });
+        // todo: Unstable! When this stops causing ICE, turn on by default
+        #[cfg(feature = "unstable_policy_inheritance")]
+        {
+            // Prove ConstraintChain<_, _, _, MARKER> => MARKER
+            tokens.extend(quote! {
+                #[allow(non_upper_case_globals)]
+                impl<
+                    Next,
+                    Attr,
+                    #policy_const_generics_definition,
+                    const STAG: EntityTag,
+                    const RTAG: EntityTag
+                > #policy_marker_ident #policy_const_generics_invocation for ConstraintChain<STAG, RTAG, Attr, Next>
+                    where
+                        Attr: BaseAttribute,
+                        Next: #policy_marker_ident #policy_const_generics_invocation {}
+            });
+        }
 
         // implement 'policy marker' for 'guards'
         let all_entity_declarations = self.get_entities()

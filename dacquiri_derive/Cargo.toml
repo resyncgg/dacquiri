@@ -7,6 +7,11 @@ license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+# Enables resolving `ConstraintChain<_, _, _, POLICY_MARKER> => POLICY_MARKER` -- highly unstable
+unstable_policy_inheritance = []
+
 [lib]
 name = "dacquiri_derive"
 proc-macro = true
