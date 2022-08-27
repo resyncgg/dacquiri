@@ -145,13 +145,22 @@ impl ToTokens for PolicyBuilder {
         // });
 
         // implement 'policy marker' for 'guards'
+        let all_entity_declarations = self.get_entities()
+            .iter()
+            .map(|declaration| {
+                let name = declaration.entity_name.to_string();
+
+                (name, declaration.clone())
+            })
+            .collect();
+
         for guard in &self.policy.guards {
             let entity_map = guard.generate_entity_requirement_map(self.get_entities());
 
             let guard_const_generics = guard.generate_const_generics(&entity_map);
             let policy_marker_const_generics = self.generate_policy_marker_const_generics_invoke(&entity_map);
 
-            let guard_trait_bounds = guard.generate_guard_trait_bound(&entity_map);
+            let guard_trait_bounds = guard.generate_guard_trait_bound(&all_entity_declarations, &entity_map);
 
             tokens.extend(quote! {
                 #[allow(non_upper_case_globals)]
@@ -214,8 +223,17 @@ impl PolicyBuilder {
             });
         }
 
+        let all_entity_declarations = self.get_entities()
+            .iter()
+            .map(|declaration| {
+                let name = declaration.entity_name.to_string();
+
+                (name, declaration.clone())
+            })
+            .collect();
+
         for clause in common_clauses {
-            trait_bound.push(clause.generate_clause_trait_bound(&entity_map));
+            trait_bound.push(clause.generate_clause_trait_bound(&all_entity_declarations, &entity_map));
         }
 
         trait_bound

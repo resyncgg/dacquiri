@@ -8,8 +8,8 @@ use crate::bank::attributes::*;
         bank: BankHandle
     ),
     guard = (
-        admin is AdminAuthorized,
-        admin is AssignedBankAdmin for bank
+        admin is Authorized,
+        admin is Assigned for bank
     )
 )]
 pub trait AuthorizedAdminPolicy {
@@ -28,7 +28,7 @@ pub trait AuthorizedAdminPolicy {
         bank: BankHandle
     ),
     guard = (
-        account is NotFrozen for bank
+        account is NotFrozen for bank,
     )
 )]
 pub trait ActiveAccountPolicy {

@@ -1,28 +1,10 @@
-use proc_macro2::{TokenStream, Ident, Span};
+use proc_macro2::{TokenStream, Ident};
 use quote::{ToTokens, quote};
-use syn::{
-    AttributeArgs,
-    ItemFn,
-    NestedMeta,
-    Meta,
-    Path,
-    Block,
-    ReturnType,
-    Type,
-    TypePath,
-    PathArguments,
-    parse_quote,
-    FnArg,
-    PatType,
-    GenericArgument,
-    Pat,
-    Lifetime
-};
+use syn::{AttributeArgs, ItemFn, NestedMeta, Meta, Path, ItemMod, Item, Attribute, AttrStyle};
+use syn::__private::TokenStream2;
+use super::parser::attribute_fn::AttributeFn;
 
-// The name of the context lifetime.
-// This should match the context lifetime defined on BaseAttribute
-const CONTEXT_LIFETIME: &str = "'ctx";
-const IGNORED_ARGUMENT_NAME: &str = "_";
+const ATTRIBUTE_FN_ATTRIBUTE: &str = "attribute";
 
 #[derive(Debug)]
 pub enum GrantError {
@@ -44,232 +26,100 @@ pub enum GrantError {
     TypeMustBeAReference,
     SubjectTypeMustBeAReference,
     ResourceTypeMustBeAReference,
+    AttributeHasNoDefinitions,
 }
 
 pub struct AttributeBuilder {
-    is_async: bool,
-    permission_name: Path,
-    subject_type: Type,
-    resource_type: Type,
-    context_type: Type,
-    error_type: Type,
-    attribute_check_block: Block,
-    subject_var: Ident,
-    resource_var: Ident,
-    context_var: Ident
+    module_name: Ident,
+    attribute_name: Path,
+    attribute_fns: Vec<AttributeFn>,
+    other_items: Vec<Item>,
 }
 
-impl TryFrom<(AttributeArgs, ItemFn)> for AttributeBuilder {
+impl TryFrom<(AttributeArgs, ItemMod)> for AttributeBuilder {
     type Error = GrantError;
 
-    fn try_from((mut args, attribute_check_fn): (AttributeArgs, ItemFn)) -> Result<Self, Self::Error> {
-        // #[grant(AccountEnabled)] => AccountEnabled
-        let permission_name = match args.pop() {
+    fn try_from((mut args, attribute_mod): (AttributeArgs, ItemMod)) -> Result<Self, Self::Error> {
+        let module_name = attribute_mod.ident;
+
+        // #[attribute(AccountEnabled)] => AccountEnabled
+        let attribute_name = match args.pop() {
             Some(NestedMeta::Meta(Meta::Path(bound))) => bound,
             _ => return Err(GrantError::MissingGrantName)
         };
 
-        let attribute_check_fn = match attribute_check_fn {
-            _ if attribute_check_fn.sig.variadic.is_some() => Err(GrantError::VariadicFunctionsNotSupported),
-            _ if attribute_check_fn.sig.unsafety.is_some() => Err(GrantError::UnsafeFunctionsNotSupported),
-            _ if attribute_check_fn.sig.abi.is_some() => Err(GrantError::ExternFunctionsNotSupported),
-            _ if attribute_check_fn.sig.constness.is_some() => Err(GrantError::ConstFunctionsNotSupported),
-            _ => Ok(attribute_check_fn),
-        }?;
+        let items = &attribute_mod.content.ok_or(GrantError::AttributeHasNoDefinitions)?.1;
 
-        let inner = match attribute_check_fn.clone().sig.output {
-            ReturnType::Type(_, inner) => Ok(inner),
-            _ => Err(GrantError::FunctionReturnTypeRequired)
-        }?;
+        let mut attribute_fns = Vec::new();
+        let mut other_items = Vec::new();
 
-        let mut segments = match *inner {
-            Type::Path(TypePath { path, .. }) => { Ok(path.segments) }
-            _ => Err(GrantError::IncorrectFunctionReturnType)
-        }?;
+        for item in items {
+            match item {
+                // if this is an annotated attribute fn
+                Item::Fn(item_fn) if is_attribute_fn(item_fn) => {
+                    let attr_fn = AttributeFn::try_from((attribute_name.clone(), item_fn.clone()))?;
 
-        let first_segment = segments.pop().ok_or(GrantError::IncorrectFunctionReturnType)?;
-
-        let grant_result_ident: Ident = parse_quote!(AttributeResult);
-
-        let error_type = match first_segment.value() {
-            path_segment if path_segment.ident != grant_result_ident => Err(GrantError::ReturnTypeMustBeAttributeResult),
-            path_segment => match path_segment.arguments.clone() {
-                PathArguments::AngleBracketed(mut arguments) if arguments.args.len() == 1 => {
-                    match arguments.args.pop().map(|pair| pair.into_value()) {
-                        Some(GenericArgument::Type(error_type)) => Ok(error_type),
-                        _ => Err(GrantError::IncorrectErrorType)
-                    }
+                    attribute_fns.push(attr_fn);
                 },
-                _ => Err(GrantError::GrantResultRequiresOneGeneric)
-            }
-        }?;
-
-        let mut inputs = attribute_check_fn.sig.inputs.clone().into_iter();
-
-        let (subject_var, subject_type) = match inputs.next() {
-            Some(input) => match extract_type(input, true) {
-                Err(GrantError::TypeMustBeAReference) => Err(GrantError::SubjectTypeMustBeAReference),
-                Err(GrantError::IncorrectType) => Err(GrantError::IncorrectSubjectType),
-                extract => extract
-            },
-            None => Err(GrantError::IncorrectNumberOfInputArguments)
-        }?;
-
-        let (resource_var, resource_type) = match inputs.next() {
-            Some(input) => match extract_type(input, true) {
-                Err(GrantError::TypeMustBeAReference) => Err(GrantError::ResourceTypeMustBeAReference),
-                Err(GrantError::IncorrectType) => Err(GrantError::IncorrectResourceType),
-                extract => extract
-            },
-            None => {
-                let ty: Type = parse_quote! { () };
-                let default_resource_var = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
-                Ok((default_resource_var, ty))
-            }
-        }?;
-
-        let (context_var, context_type) = match inputs.next() {
-            Some(input) => match extract_type(input, false) {
-                Err(GrantError::IncorrectType) => Err(GrantError::IncorrectContextType),
-                // lifetime substitution so consumers don't need to add their own 'ctx to references
-                Ok((ident, ty)) => Ok((ident, substitute_lifetime_with_context_lifetime(ty))),
-                extract => extract
-            },
-            None => {
-                let ty: Type = parse_quote! { () };
-                let default_resource_var = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
-                Ok((default_resource_var, ty))
-            }
-        }?;
-
-        let grant_check_block = *attribute_check_fn.block;
-        let is_async = attribute_check_fn.sig.asyncness.is_some();
+                other => other_items.push(other.clone()),
+            };
+        }
 
         Ok(AttributeBuilder {
-            is_async,
-            permission_name,
-            subject_type,
-            resource_type,
-            context_type,
-            error_type,
-            attribute_check_block: grant_check_block,
-            subject_var,
-            resource_var,
-            context_var
+            module_name,
+            attribute_name,
+            attribute_fns,
+            other_items
         })
     }
 }
 
-// Recursively dives through types to replace lifetimes with 'ctx to make them work w/ context transparently
-fn substitute_lifetime_with_context_lifetime(ty: Type) -> Type {
-    match ty {
-        Type::Reference(mut ref_type) => {
-            ref_type.elem = Box::new(substitute_lifetime_with_context_lifetime(*ref_type.elem));
-            ref_type.lifetime = Some(Lifetime::new(CONTEXT_LIFETIME, Span::call_site()));
+/**
+    Validates that a given ItemFn is a proper attribute fn definition.
 
-            Type::Reference(ref_type)
-        },
-        Type::Tuple(mut tuple_type) => {
-            let adjusted_types = tuple_type.elems
-                .clone()
-                .into_iter()
-                .map(substitute_lifetime_with_context_lifetime)
-                .collect::<Vec<Type>>();
+    This validates that the function is in the form
 
-            tuple_type.elems.clear();
-            tuple_type.elems.extend(adjusted_types);
+    #[attribute]
+    fn some_name(...) {
 
-            Type::Tuple(tuple_type)
-        },
-        Type::Array(mut array_type) => {
-            array_type.elem = Box::new(substitute_lifetime_with_context_lifetime(*array_type.elem));
-
-            Type::Array(array_type)
-        },
-        plain => plain
     }
+*/
+fn is_attribute_fn(item_fn: &ItemFn) -> bool {
+    item_fn.attrs
+        .iter()
+        // todo: add additional validation of the arguments and return type
+        .any(|attribute| matches!(attribute, Attribute { style: AttrStyle::Outer, path, .. } if path.to_token_stream().to_string() == ATTRIBUTE_FN_ATTRIBUTE))
 }
 
-fn extract_type(input: FnArg, force_reference: bool) -> Result<(Ident, Type), GrantError> {
-    let (pat, ty) = match input {
-        FnArg::Typed(PatType { pat, ty, .. }) => Ok((pat, ty)),
-        _ => Err(GrantError::IncorrectNumberOfInputArguments)
-    }?;
-
-    if force_reference {
-        extract_reference_type(*pat, *ty)
-    } else {
-        extract_any_type(*pat, *ty)
-    }
-}
-
-fn extract_reference_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
-    match (pat, ty) {
-        (Pat::Wild(_), Type::Reference(inner)) => {
-            let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
-
-            Ok((ident, *inner.elem))
-        },
-        (Pat::Ident(var_name), Type::Reference(inner)) => Ok((var_name.ident, *inner.elem)),
-        (_, Type::Path(_) | Type::Tuple(_)) => Err(GrantError::TypeMustBeAReference),
-        _ => Err(GrantError::IncorrectType)
-    }
-}
-
-fn extract_any_type(pat: Pat, ty: Type) -> Result<(Ident, Type), GrantError> {
-    match (pat, ty) {
-        (Pat::Wild(_), ty) => {
-            let ident: Ident = Ident::new(IGNORED_ARGUMENT_NAME, Span::call_site());
-
-            Ok((ident, ty))
-        },
-        (Pat::Ident(var_name), ty) => Ok((var_name.ident, ty)),
-        _ => Err(GrantError::IncorrectType)
-    }
-}
 
 impl ToTokens for AttributeBuilder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let permission_identity = &self.permission_name;
+        let module_identity = &self.module_name;
+        let permission_identity = &self.attribute_name;
 
-        let error_type = &self.error_type;
-        
-        let subject_type = &self.subject_type;
-        let resource_type = &self.resource_type;
-        let context_type = &self.context_type;
-        
-        let subject_var_name = &self.subject_var;
-        let resource_var_name = &self.resource_var;
-        let context_var_name = &self.context_var;
-
-        let subject_check_impl = &self.attribute_check_block;
-        
-        tokens.extend(quote!{
-            pub struct #permission_identity;
-        });
-
-        tokens.extend(quote!{
-           impl dacquiri::prelude::BaseAttribute for #permission_identity {
-                type Subject = #subject_type;
-                type Resource = #resource_type;
-                type Context<'ctx> = #context_type;
-                type Error = #error_type;
+        tokens.extend(quote! {
+            pub struct #permission_identity<S, R> {
+                _subject: core::marker::PhantomData<S>,
+                _resource: core::marker::PhantomData<R>,
             }
         });
 
-        if self.is_async {
-            tokens.extend(quote!{
-                #[async_trait::async_trait]
-                impl dacquiri::prelude::AsyncAttribute for #permission_identity {
-                    async fn test_async<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
-                }
-            });
-        } else {
-            tokens.extend(quote!{
-                impl dacquiri::prelude::SyncAttribute for #permission_identity {
-                    fn test<'ctx>(#subject_var_name: &Self::Subject, #resource_var_name: &Self::Resource, #context_var_name: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #subject_check_impl
-                }
-            });
+        let mut mod_elems = TokenStream2::new();
+
+        for attr_fn in &self.attribute_fns {
+            mod_elems.extend(attr_fn.to_token_stream());
         }
+
+        for item in &self.other_items {
+            mod_elems.extend(item.to_token_stream());
+        }
+
+        tokens.extend(quote! {
+            mod #module_identity {
+                use super::#permission_identity;
+
+                #mod_elems
+            }
+        })
     }
 }
