@@ -14,7 +14,7 @@ fn main() -> AttributeResult<()> {
     let user = User::new(true, true);
 
     let caller = user.into_entity::<"user">()
-        .prove::<Enabled, "user">()?;
+        .prove::<Enabled<_, _>, "user">()?;
 
     guarded_function(caller);
 
@@ -40,20 +40,30 @@ mod policy {
     }
 
     #[attribute(Enabled)]
-    pub fn check_enabled(user: &User) -> AttributeResult<()> {
-        if user.enabled {
-            Ok(())
-        } else {
-            Err(())
+    mod enabled {
+        use super::User;
+
+        #[attribute]
+        pub fn check_enabled(user: &User) -> AttributeResult<()> {
+            if user.enabled {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 
     #[attribute(Verified)]
-    pub fn check_verified(user: &User) -> AttributeResult<()> {
-        if user.verified {
-            Ok(())
-        } else {
-            Err(())
+    mod verified {
+        use super::User;
+
+        #[attribute]
+        pub fn check_verified(user: &User) -> AttributeResult<()> {
+            if user.verified {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 
