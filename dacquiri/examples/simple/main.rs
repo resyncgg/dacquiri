@@ -17,8 +17,7 @@ use crate::error::AuthorizationError;
 use crate::models::User;
 use crate::policies::*;
 
-#[tokio::main]
-async fn main() -> AttributeResult<AuthorizationError> {
+fn main() -> AttributeResult<AuthorizationError> {
     let user = User::new("d0nut", true);
 
     let caller = user
