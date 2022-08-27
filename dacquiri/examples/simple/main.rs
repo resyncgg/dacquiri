@@ -17,12 +17,13 @@ use crate::error::AuthorizationError;
 use crate::models::User;
 use crate::policies::*;
 
-fn main() -> AttributeResult<AuthorizationError> {
+#[tokio::main]
+async fn main() -> AttributeResult<AuthorizationError> {
     let user = User::new("d0nut", true);
 
     let caller = user
         .into_entity::<"user">()
-        .prove::<Enabled<_, _>, "user">()?;
+        .check_if_user_is_enabled::<"user">()?;
 
     guarded(caller)
 }

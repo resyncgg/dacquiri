@@ -1,11 +1,12 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{Block, FnArg, GenericArgument, ItemFn, Lifetime, parse_quote, Pat, Path, PathArguments, PatType, ReturnType, Type, TypePath};
+use syn::{Block, FnArg, GenericArgument, ItemFn, Lifetime, parse_quote, Pat, Path, PathArguments, PatType, ReturnType, Type, TypePath, TypeTuple};
 use crate::attribute::builder::GrantError;
 use crate::attribute::parser::{CONTEXT_LIFETIME, IGNORED_ARGUMENT_NAME};
 
 pub(crate) struct AttributeFn {
     attribute_identity: Path,
+    attribute_fn_name: Ident,
     is_async: bool,
     subject_type: Type,
     resource_type: Type,
@@ -15,6 +16,166 @@ pub(crate) struct AttributeFn {
     subject_var: Ident,
     resource_var: Ident,
     context_var: Ident
+}
+
+impl AttributeFn {
+    pub(crate) fn create_proving_function_impl(&self) -> TokenStream {
+        let AttributeFn {
+            attribute_identity,
+            attribute_fn_name,
+            subject_type,
+            resource_type,
+            context_type,
+            error_type,
+            context_var,
+            ..
+        } = &self;
+
+        match (resource_type, context_type) {
+            // async + subject
+            _ if resource_type.is_unit_type() && context_type.is_unit_type() && self.is_async => {
+                quote! {
+                    async fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str
+                    >(self) -> Result<dacquiri::prelude::ConstraintChain<STAG, { dacquiri::prelude::DEFAULT_ELEMENT_TAG }, #attribute_identity<#subject_type, ()>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttribute
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                    {
+                        self.prove_async::<#attribute_identity<_, _>, STAG>().await
+                    }
+                }
+            },
+            // async + subject + context
+            _ if resource_type.is_unit_type() && self.is_async => {
+                quote! {
+                    async fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str
+                    >(self, #context_var: #context_type) -> Result<dacquiri::prelude::ConstraintChain<STAG, { dacquiri::prelude::DEFAULT_ELEMENT_TAG }, #attribute_identity<#subject_type, ()>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithContext<#context_type>
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>,
+                            'ctx: 'async_trait,
+                    {
+                        self.prove_with_context_async::<#attribute_identity<_, _>, STAG>(#context_var).await
+                    }
+                }
+            },
+            // async + subject + resource
+            // todo: figure out if we can restrict `#context_type` to Send
+            _ if context_type.is_unit_type() && self.is_async => {
+                quote! {
+                    async fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str,
+                        const RTAG: &'static str,
+                    >(self) -> Result<dacquiri::prelude::ConstraintChain<STAG, RTAG, #attribute_identity<#subject_type, #resource_type>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithResource
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                                + dacquiri::prelude::HasEntityWithType<RTAG, #resource_type>,
+                            'ctx: 'async_trait,
+                    {
+                        self.prove_with_resource_async::<#attribute_identity<_, _>, STAG, RTAG>().await
+                    }
+                }
+            },
+            // async + subject + resource + context
+            _ if self.is_async => {
+                quote! {
+                    async fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str,
+                        const RTAG: &'static str,
+                    >(self, #context_var: #context_type) -> Result<dacquiri::prelude::ConstraintChain<STAG, RTAG, #attribute_identity<#subject_type, #resource_type>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithResourceAndContext<#context_type>
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                                + dacquiri::prelude::HasEntityWithType<RTAG, #resource_type>,
+                            'ctx: 'async_trait
+                    {
+                        self.prove_with_resource_and_context_async::<#attribute_identity<_, _>, STAG, RTAG>(#context_var).await
+                    }
+                }
+            },
+            // subject
+            _ if resource_type.is_unit_type() && context_type.is_unit_type() => {
+                quote! {
+                    fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str
+                    >(self) -> Result<dacquiri::prelude::ConstraintChain<STAG, { dacquiri::prelude::DEFAULT_ELEMENT_TAG }, #attribute_identity<#subject_type, ()>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttribute
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                    {
+                        self.prove::<#attribute_identity<_, _>, STAG>()
+                    }
+                }
+            },
+            // subject + context
+            _ if resource_type.is_unit_type() => {
+                quote! {
+                    fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str,
+                    >(self, #context_var: #context_type) -> Result<dacquiri::prelude::ConstraintChain<STAG, { dacquiri::prelude::DEFAULT_ELEMENT_TAG }, #attribute_identity<#subject_type, ()>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithContext<#context_type>
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                    {
+                        self.prove_with_context::<#attribute_identity<_, _>, STAG>(#context_var)
+                    }
+                }
+            },
+            // subject + resource
+            _ if context_type.is_unit_type() => {
+                quote! {
+                    fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str,
+                        const RTAG: &'static str,
+                    >(self) -> Result<dacquiri::prelude::ConstraintChain<STAG, RTAG, #attribute_identity<#subject_type, #resource_type>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithResource
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                                + dacquiri::prelude::HasEntityWithType<RTAG, #resource_type>,
+                    {
+                        self.prove_with_resource::<#attribute_identity<_, _>, STAG, RTAG>()
+                    }
+                }
+            },
+            // subject + resource + context
+            _ => {
+                quote! {
+                    fn #attribute_fn_name<
+                        'ctx,
+                        const STAG: &'static str,
+                        const RTAG: &'static str,
+                    >(self, #context_var: #context_type) -> Result<dacquiri::prelude::ConstraintChain<STAG, RTAG, #attribute_identity<#subject_type, #resource_type>, Self>, #error_type>
+                        where
+                            Self: dacquiri::prelude::AcquireAttributeWithResourceAndContext<#context_type>
+                                + dacquiri::prelude::HasEntityWithType<STAG, #subject_type>
+                                + dacquiri::prelude::HasEntityWithType<RTAG, #resource_type>,
+                    {
+                        self.prove_with_resource_and_context::<#attribute_identity<_, _>, STAG, RTAG>(#context_var)
+                    }
+                }
+            }
+        }
+    }
+}
+
+trait TypeExt {
+    fn is_unit_type(&self) -> bool;
+}
+
+impl TypeExt for Type {
+    fn is_unit_type(&self) -> bool {
+        matches!(self, Type::Tuple(TypeTuple { elems, .. }) if elems.is_empty())
+    }
 }
 
 impl TryFrom<(Path, ItemFn)> for AttributeFn {
@@ -98,9 +259,11 @@ impl TryFrom<(Path, ItemFn)> for AttributeFn {
 
         let attribute_check_block = *attribute_check_fn.block;
         let is_async = attribute_check_fn.sig.asyncness.is_some();
+        let attribute_fn_name  = attribute_check_fn.sig.ident.clone();
 
         Ok(Self {
             attribute_identity,
+            attribute_fn_name,
             is_async,
             subject_type,
             resource_type,
@@ -128,7 +291,6 @@ impl ToTokens for AttributeFn {
             context_var,
             ..
         } = &self;
-
 
         tokens.extend(quote!{
            impl dacquiri::prelude::BaseAttribute for #attribute_identity<#subject_type, #resource_type> {

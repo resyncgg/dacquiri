@@ -1,8 +1,8 @@
-error[E0599]: the method `print_message` exists for struct `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>`, but its trait bounds were not satisfied
+error[E0599]: the method `print_message` exists for struct `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>`, but its trait bounds were not satisfied
   --> tests/ui/fail/simple.rs:18:10
    |
 18 |         .print_message();
-   |          ^^^^^^^^^^^^^ method cannot be called on `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` due to unsatisfied trait bounds
+   |          ^^^^^^^^^^^^^ method cannot be called on `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` due to unsatisfied trait bounds
    |
   ::: src/chain.rs
    |
@@ -12,7 +12,7 @@ error[E0599]: the method `print_message` exists for struct `ConstraintChain<"use
    | doesn't satisfy `_: VerifiedUserPolicyMarker<_>`
    | doesn't satisfy `_: policy::VerifiedUserPolicy<_>`
    |
-note: trait bound `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>: VerifiedUserPolicyMarker<_>` was not satisfied
+note: trait bound `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>: VerifiedUserPolicyMarker<_>` was not satisfied
   --> tests/ui/fail/simple.rs:65:5
    |
 65 |       #[policy(
