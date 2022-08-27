@@ -1,4 +1,4 @@
-use proc_macro2::{TokenStream, Ident};
+use proc_macro2::{TokenStream, Ident, Span};
 use quote::{ToTokens, quote};
 use syn::{AttributeArgs, ItemFn, NestedMeta, Meta, Path, ItemMod, Item, Attribute, AttrStyle};
 use syn::__private::TokenStream2;
@@ -96,6 +96,8 @@ impl ToTokens for AttributeBuilder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let module_identity = &self.module_name;
         let permission_identity = &self.attribute_name;
+        let proving_function_name = format!("{}AttrExt", permission_identity.to_token_stream().to_string());
+        let proving_function_trait = Ident::new(&proving_function_name, Span::call_site());
 
         tokens.extend(quote! {
             pub struct #permission_identity<S, R> {
@@ -104,10 +106,13 @@ impl ToTokens for AttributeBuilder {
             }
         });
 
+        let mut attr_proving_funcs = TokenStream2::new();
         let mut mod_elems = TokenStream2::new();
 
         for attr_fn in &self.attribute_fns {
             mod_elems.extend(attr_fn.to_token_stream());
+
+            attr_proving_funcs.extend(attr_fn.create_proving_function_impl());
         }
 
         for item in &self.other_items {
@@ -115,8 +120,19 @@ impl ToTokens for AttributeBuilder {
         }
 
         tokens.extend(quote! {
+            pub use #module_identity::#proving_function_trait;
+
             mod #module_identity {
                 use super::#permission_identity;
+
+                #[async_trait::async_trait]
+                pub trait #proving_function_trait {
+                    #attr_proving_funcs
+                }
+
+                impl<T> #proving_function_trait for T
+                where
+                    T: dacquiri::prelude::ConstraintT + Sized {}
 
                 #mod_elems
             }

@@ -13,8 +13,8 @@ error[E0277]: caller hasn't proven that the subject entity maintains attribute `
              <dacquiri::prelude::EntityProof<ETAG, EntityType, Next> as HasConstraint<Attr, STAG, RTAG>>
    = note: required for `dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>` to implement `HasConstraint<Verified<policy::User, ()>, "user", "___">`
    = note: 1 redundant requirement hidden
-   = note: required for `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `HasConstraint<Verified<policy::User, ()>, "user", "___">`
-note: required for `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `VerifiedUserPolicyMarker`
+   = note: required for `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `HasConstraint<Verified<policy::User, ()>, "user", "___">`
+note: required for `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `VerifiedUserPolicyMarker`
   --> tests/ui/fail/simple_guarded_function.rs:70:5
    |
 70 | /     #[policy(
@@ -25,7 +25,7 @@ note: required for `ConstraintChain<"user", "___", policy::Enabled<policy::User,
 77 | |         )
 78 | |     )]
    | |______^
-note: required for `ConstraintChain<"user", "___", policy::Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `policy::VerifiedUserPolicy`
+note: required for `ConstraintChain<"user", "___", Enabled<policy::User, ()>, dacquiri::prelude::EntityProof<"user", policy::User, ConstraintStore>>` to implement `policy::VerifiedUserPolicy`
   --> tests/ui/fail/simple_guarded_function.rs:70:5
    |
 70 | /     #[policy(

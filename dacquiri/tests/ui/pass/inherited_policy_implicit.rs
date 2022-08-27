@@ -14,12 +14,12 @@ fn main() -> AttributeResult<()> {
     let user = User::new(true);
 
     let context = user.into_entity::<"user">()
-        .prove::<Enabled<_, _>, "user">()?;
+        .check_enabled::<"user">()?;
 
     context.print_enabled();
 
     context
-        .prove::<Verified<_, _>, "user">()?
+        .check_verified::<"user">()?
         .print_verified();
 
     Ok(())

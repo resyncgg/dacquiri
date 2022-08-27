@@ -1,19 +1,5 @@
 use dacquiri::prelude::*;
 
-#[attribute(Authorized)]
-mod authorized {
-    use crate::bank::{BankAdmin, BankError};
-
-    #[attribute]
-    pub fn check_admin_authorized_action(admin: &BankAdmin, _: &(), admin_password: &str) -> AttributeResult<BankError> {
-        if admin.check_password(admin_password) {
-            Ok(())
-        } else {
-            Err(BankError::IncorrectBankAdminPassword)
-        }
-    }
-}
-
 #[attribute(Assigned)]
 mod assigned {
     use crate::bank::{BankAdmin, BankHandle, BankError};
@@ -43,10 +29,10 @@ mod frozen {
 
 #[attribute(Authenticated)]
 mod authenticated {
-    use crate::bank::{AccountID, BankHandle, BankError};
+    use crate::bank::{AccountID, BankHandle, BankError, BankAdmin};
 
     #[attribute]
-    pub fn check_caller_has_account_password(
+    pub fn check_account_password(
         account_id: &AccountID,
         bank: &BankHandle,
         password: &str
@@ -54,6 +40,15 @@ mod authenticated {
         match bank.lock().get_account(account_id)? {
             account if account.check_password(password) => Ok(()),
             _ => Err(BankError::IncorrectAccountPassword),
+        }
+    }
+
+    #[attribute]
+    pub fn check_admin_password(admin: &BankAdmin, _: &(), admin_password: &str) -> AttributeResult<BankError> {
+        if admin.check_password(admin_password) {
+            Ok(())
+        } else {
+            Err(BankError::IncorrectBankAdminPassword)
         }
     }
 }

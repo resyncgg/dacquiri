@@ -6,7 +6,7 @@ mod enabled {
     use crate::models::User;
 
     #[attribute]
-    pub fn check_if_user_enabled(user: &User) -> AttributeResult<AuthorizationError> {
+    pub fn check_if_user_is_enabled(user: &User) -> AttributeResult<AuthorizationError> {
         if user.is_enabled() {
             Ok(())
         } else {

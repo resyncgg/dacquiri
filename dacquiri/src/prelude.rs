@@ -21,8 +21,8 @@ pub use crate::has::{
 };
 pub use crate::acquire::{
     acquire_default::AcquireAttribute,
-    acquire_with_resource::AcquireAttributeWithResource,
     acquire_with_context::AcquireAttributeWithContext,
+    acquire_with_resource::AcquireAttributeWithResource,
     acquire_with_resource_and_context::AcquireAttributeWithResourceAndContext
 };
 pub use crate::constraint::InitializeConstraint;

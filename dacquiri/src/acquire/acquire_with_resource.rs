@@ -5,48 +5,52 @@ use crate::attribute::{
     SyncAttribute
 };
 use crate::chain::{ConstraintChain, ConstraintEntity, EntityTag};
-use crate::DEFAULT_ELEMENT_TAG;
 use crate::has::HasEntityWithType;
 
-
-impl<T, C> AcquireAttributeWithResource<C> for T
+impl<T> AcquireAttributeWithResource for T
     where
-        T: AcquireAttributeWithResourceAndContext<C>,
-        C: Send {}
+        T: AcquireAttributeWithResourceAndContext<()>, {}
 
 #[async_trait]
-pub trait AcquireAttributeWithResource<C: Send>: AcquireAttributeWithResourceAndContext<C> {
-    async fn prove_with_context_async<
+pub trait AcquireAttributeWithResource: AcquireAttributeWithResourceAndContext<()> {
+    async fn prove_with_resource_async<
         'ctx,
         Attr,
         const STAG: EntityTag,
-    >(self, context: C) -> Result<ConstraintChain<STAG, DEFAULT_ELEMENT_TAG, Attr, Self>, Attr::Error>
+        const RTAG: EntityTag,
+    >(self) -> Result<ConstraintChain<STAG, RTAG, Attr, Self>, Attr::Error>
         where
             Attr::Subject: ConstraintEntity + 'static,
-            C: 'async_trait,
+            Attr::Resource: ConstraintEntity + 'static,
             Self: HasEntityWithType<STAG, Attr::Subject>,
-            Attr: AsyncAttribute<Resource = (), Context<'ctx> = C>,
+            Self: HasEntityWithType<RTAG, Attr::Resource>,
+            Attr: AsyncAttribute<Context<'ctx> = ()>,
     {
         let subject = self.get_entity::<_, STAG>();
+        let resource = self.get_entity::<_, RTAG>();
 
-        Attr::test_async(subject, &(), context).await?;
+        Attr::test_async(subject, resource, ()).await?;
 
         Ok(ConstraintChain::<_, _, _, _>::new(self))
     }
 
-    fn prove_with_context<
+    fn prove_with_resource<
         'ctx,
         Attr,
         const STAG: EntityTag,
-    >(self, context: C) -> Result<ConstraintChain<STAG, DEFAULT_ELEMENT_TAG, Attr, Self>, Attr::Error>
+        const RTAG: EntityTag
+    >(self) -> Result<ConstraintChain<STAG, RTAG, Attr, Self>, Attr::Error>
         where
             Attr::Subject: ConstraintEntity + 'static,
+            Attr::Resource: ConstraintEntity + 'static,
             Self: HasEntityWithType<STAG, Attr::Subject>,
-            Attr: SyncAttribute<Resource = (), Context<'ctx> = C>,
+            Self: HasEntityWithType<RTAG, Attr::Resource>,
+            Attr: SyncAttribute<Context<'ctx> = ()>,
     {
         let subject = self.get_entity::<_, STAG>();
+        let resource = self.get_entity::<_, RTAG>();
 
-        Attr::test(subject, &(), context)?;
+        Attr::test(subject, resource, ())?;
 
         Ok(ConstraintChain::<_, _, _, _>::new(self))
     }

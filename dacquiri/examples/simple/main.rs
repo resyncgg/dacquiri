@@ -22,7 +22,7 @@ fn main() -> AttributeResult<AuthorizationError> {
 
     let caller = user
         .into_entity::<"user">()
-        .prove::<Enabled<_, _>, "user">()?;
+        .check_if_user_is_enabled::<"user">()?;
 
     guarded(caller)
 }

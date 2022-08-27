@@ -14,7 +14,7 @@ fn main() -> AttributeResult<()> {
     let user = User::new(true, true);
 
     let caller = user.into_entity::<"user">()
-        .prove::<Enabled<_, _>, "user">()?;
+        .check_enabled::<"user">()?;
 
     guarded_function(caller);
 

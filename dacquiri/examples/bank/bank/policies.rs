@@ -8,7 +8,7 @@ use crate::bank::attributes::*;
         bank: BankHandle
     ),
     guard = (
-        admin is Authorized,
+        admin is Authenticated,
         admin is Assigned for bank
     )
 )]
