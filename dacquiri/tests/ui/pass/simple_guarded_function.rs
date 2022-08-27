@@ -14,7 +14,7 @@ fn main() -> AttributeResult<()> {
     let user = User::new(true);
 
     let context = user.into_entity::<"user">()
-        .prove::<Enabled, "user">()?;
+        .prove::<Enabled<_, _>, "user">()?;
 
     guarded(context);
 
@@ -39,11 +39,16 @@ mod policy {
     }
 
     #[attribute(Enabled)]
-    pub fn check_enabled(user: &User) -> AttributeResult<()> {
-        if user.enabled {
-            Ok(())
-        } else {
-            Err(())
+    mod enabled {
+        use super::User;
+
+        #[attribute]
+        pub fn check_enabled(user: &User) -> AttributeResult<()> {
+            if user.enabled {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 
