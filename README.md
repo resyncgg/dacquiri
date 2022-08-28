@@ -1,238 +1,413 @@
 # Dacquiri
-An authorization framework with compile-time enforcement.
+A framework that turns authorization vulnerabilities into compiler errors.
 
-# Introduction to Dacquiri
-Dacquiri turns authorization vulnerabilities into compile-time errors.
+# What is Dacquiri?
+Dacquiri is a framework that uses the type system to validate, at compile time, all code paths satisfy your access control policies. It does this by giving developers the capability to annotate any function with an access control policy. These policies are transformed into complex trait bounds that enforce that callers check that they satisfy these policies ahead of time.
 
-Dacquiri has two main concepts that govern how authorization policies are defined and applied.
-### ❗ Note - Unstable Features
-`dacquiri` relies on nightly + multiple unstable features to work.
-The following unstable features will, at minimum, be required in your
-application for it to work with `dacquiri`.
+# How Does It Work?
+Dacquiri consists of two main components: **attributes** and **policies**.
+
+## Attributes
+*Attributes* are equivalent to the conditions you'd find in your `if` statements and other control flow logic.
+
+Take the following example web endpoint in an Actix web application.
+
 ```rust
-#![feature(generic_associated_types)]
-#![feature(adt_const_params)]
-#![feature(generic_arg_infer)]
-```
-Additionally, you can add `#![allow(incomplete_features)]` to ignore the inevitable unstable feature warnings.
+// An example endpoint built in actix.
+// Assume that Session is an extractor
+#[get("/documents/{doc_id}")]
+async fn access_document(req: HttpRequest, session: Session, doc_id: Path<String>) -> impl Responder {
+    let document_service = req.get_document_service();
+    let doc_id = doc_id.into_inner();
+    let document_meta = document_service.fetch_doc_metadata(doc_id).await?;
 
-# Attributes
-**Attributes** are properties we prove about a **Subject**
-(_the entity we are applying the authorization check against_).
-_Attributes_ are statements that are true about a particular _subject_. For example,
-`UserIsEnabled` may be an attribute defined for `User` _subjects_ that have their `enabled` flag set to `true`.
-Some additional _attributes_ you might define could answer the following:
-* Is this user's ID verified?
-* Is this user's account older than 30 days?
-* Is this user a member of a particular team?
-  
+    // Only allow caller to read document if they own it
+    if document_meta.owner == session.user_id {
+        let document = document_service.fetch_doc_contents(doc_id).await?;
 
-  The last _attribute_ introduces us to the idea of _resources_.
-  A **Resource** is the object a _subject_ is attempting to acquire a particular _attribute_ against.
-  A common example of an _attribute_, with a _resource_, would be a `UserIsTeamMember` attribute.
-  For this attribute, the *subject* is `User` and the *resource* is `Team`. This attribute would only be
-  granted if the `User` was a member of the specified `Team`.
-  
-
-  While this a useful primitive, it wouldn't make much sense to check if a `User` was a member of a `Team` and then perform actions against a
-  completely different `Team` object. Therefore, attributes _also_ **remember** which
-  _resource_ they were acquired against. This way, if necessary, you can access an _attribute_'s associated _resource_.
-## Writing Attributes
-We define _attributes_ using the [`attribute`](crate::prelude::attribute) macro, 1 to 3 arguments, and an [`AttributeResult`](crate::prelude::AttributeResult) return type.
-```rust
-use dacquiri::prelude::*;
-#[attribute(UserIsEnabled)]
-fn check_user_is_enabled(user: &User) -> AttributeResult<String> {
-    match user.enabled {
-        true => Ok(()),
-        false => Err(format!("User is not enabled."))
+        Ok(document)
+    } else {
+        Err(AppError::Unauthorized)
     }
 }
 ```
-This will automatically generate an _attribute_ with a `User` as the subject and `()` as the resource.
-If we have a resource we depend on, we can add it as the second argument to the function.
+
+The `document.owner == session.user_id` condition is an example of an *attribute* you'd write in Dacquiri. 
+
+Let's build that attribute with Dacquiri and see how we can use it to protect this application.
+
+### Defining an Attribute
+
 ```rust
 use dacquiri::prelude::*;
-#[attribute(UserIsTeamMember)]
-fn check_user_team(
-    user: &User,
-    team: &Team
-) -> AttributeResult<String> {
-    match team.users.contains(&user.user_id) {
-        true => Ok(()),
-        false => Err(format!("User is not specified team."))
+
+// define the attribute
+#[attribute(Owner)]
+mod owner {
+    // define a method of testing for that attribute
+    #[attribute]
+    fn check_caller_owns_document(
+        session: &Session,
+        document_meta: &DocumentMeta
+    ) -> AttributeResult<AppError> {
+        // check user owns document
+        (session.user_id == document_meta.owner)
+            .then_some(())
+            .ok_or(AppError::Unauthorized)
     }
 }
 ```
-The generated `UserIsTeamMember` attribute will have `User` as the _subject_ and `Team` as the _resource_.
-Sometimes, you may not have all of the required information to determine if a _subject_ has a particular _attribute_
-for a particular _resource_ even if you already have that _resource_ fetched. In these cases, you can specify an optional
-third argument to provide _context_ or assets required to access additional, required information.
 
-Here's an example iteration on the previous _attribute_ we defined where we fetch data, live, from a database.
+Now we can use the `Owner` attribute to talk about whether or not we own a particular document. Now let's use it describe how we could safely fetch documents!
+
+## Policies
+*Policies* allow us to define the access control policy on a collection of methods. They're made up of **entities** and **guards**.
+
+An *entity* is any object we want to test attributes against or access in our methods. 
+
+A *guard* is a collection of attributes that must be satisfied to access this method.
+
+Let's build a simple policy that only allows callers to fetch document contents if they own the document. We'll implement it as an async method on the policy trait definition. 
+
 ```rust
 use dacquiri::prelude::*;
-#[attribute(UserIsTeamMember)]
-async fn user_team_check(
-    user: &User,
-    team: &Team,
-    conn: &mut DatabaseConnection
-) -> AttributeResult<String> {
-    let row_count = conn.count_query(
-        "select count(*) from memberships where uid = {} and tid = {}",
-        vec![user.user_id, team.team_id]
+
+#[policy(
+    entities = (
+        user: Session,
+        document_metadata: DocumentMeta
+    ),
+    guard = (
+        user is Owner for document_metadata
     )
-    .await
-    .map_err(|_| format!("DB error."))?;
-    // if we have more than 1 records, we're on the team!
-    match row_count > 0  {
-        true => Ok(()),
-        false => Err(format!("User is not on the specified team."))
-    }
-}
-```
-You should notice two things that are different about this particular attribute.
-1. We didn't have to make the context (_3rd argument_) an immutable reference. Attribute context's
-   can be owned, immutable, or mutable references. This allows you to use any concrete type you wish here.
-2. You should also notice that this attribute function is `async`! Attributes support async and it's as
-   simple as just adding the keyword to the function. All of the other work is handled automatically for you.
-   We'll come back to attributes in a bit, but first let's talk about **Entitlements**.
-# Entitlements
-**Entitlements** are traits, gated behind one or more _attributes_, that are automatically applied
-to any _subject_ that has acquired all of the prerequisite _attributes_ at _some point_, in _any order_.
-An example of a useful _entitlement_ could be a `VerifiedUser` _entitlement_ which would require the following _attributes_:
-* `UserIsEnabled` - Checks that the user's enabled flag is true
-* `UserIsVerified` - Checks that the user's verified state is `Verified::Success`
-## Writing Entitlements
-Entitlements allow us to guard functionality behind a prerequisite set of _attributes_ using default trait methods.
-We start by defining a trait with the [`entitlement`](crate::prelude::entitlement) macro.
-```rust
-#[entitlement(UserIsVerified, UserIsEnabled)]
-pub trait VerifiedUser {
-    fn print_message(&self) {
-        println!("Hello, world!!");
-    }
-}
-```
-This _entitlement_ requires that a _subject_ have both the `UserIsVerified` and `UserIsEnabled` attributes.
-If a _subject_ has acquired both _attributes_, `VerifiedUser` will automatically be implemented on the _subject_.
-To get access to the `User` _subject_ again, we use the [`get_subject`](crate::prelude::SubjectT::get_subject) or
-[`get_subject_mut`](crate::prelude::SubjectT::get_subject_mut) methods. Then we can access information
-or make changes to our subject once again.
-```rust
-#[entitlement(UserIsVerified, UserIsEnabled)]
-pub trait VerifiedUser {
-    fn change_name(&mut self, new_name: impl Into<String>) {
-        self.get_subject_mut().name = new_name.into();
-    }
-}
-```
-We can create async methods here as well using [`#[async_trait]`](async_trait::async_trait) like a normal trait.
-```rust
-#[async_trait]
-#[entitlement(UserIsVerified, UserIsEnabled)]
-pub trait VerifiedUser {
-    // set the account's enabled to false and consume the user
-    async fn disable_account(self, conn: &mut DatabaseConnection) {
-        let query = escape!(
-            "UPDATE users SET enabled = false WHERE uid = {};",
-            self.get_subject().user_id
-        );
-        conn.execute(query).await;
-    }
-}
-```
-# Acquiring Attributes
-To acquire an _attribute_, we call one of the following on our subject.
-- [`try_grant`](crate::prelude::Grantable::try_grant)
-- [`try_grant_async`](crate::prelude::Grantable::try_grant_async)
-- [`try_grant_with_context`](crate::prelude::GrantableWithContext::try_grant_with_context)
-- [`try_grant_with_context_async`](crate::prelude::GrantableWithContext::try_grant_with_context_async)
-- [`try_grant_with_resource`](crate::prelude::GrantableWithResource::try_grant_with_resource)
-- [`try_grant_with_resource_async`](crate::prelude::GrantableWithResource::try_grant_with_resource_async)
-- [`try_grant_with_resource_and_context`](crate::prelude::AttributeWithResourceAndContext::try_grant_with_resource_and_context)
-- [`try_grant_with_resource_and_context_async`](crate::prelude::AttributeWithResourceAndContext::try_grant_with_resource_and_context_async)
-  
-For example, if we wanted to check if our `User` was both enabled and a member of a `Team` we could do the following.
-  We'll use the previous `UserIsEnabled` and `UserIsTeamMember` _attribute_ definitions.
-```rust
-#[tokio::main]
-async fn main() -> Result<(), String> {
-    let user: User = get_user();
-    let team: Team = get_team();
-    let mut conn: DatabaseConnection = get_database_conn();
-    let checked_user = user
-        .try_grant::<UserIsEnabled>()?
-        .try_grant_with_resource_and_context_async::<UserIsTeamMember, _>(team, &mut conn).await?;
-}
-```
-## Leveraging Entitlements
-Now that we know how to acquire an _attribute_ for a _subject_, let's put the entitlement system
-to work by guarding a function with one or more entitlements.
+)]
+pub trait DocumentOwnerPolicy {
+    async fn fetch_document_contents(&self, document_service: &DocumentService) -> Result<Document, AppError> {
+        // grab the DocumentMeta from our policy definition
+        let meta: &DocumentMeta = self.get_entity::<_, document_metadata>();
 
-We treat _entitlements_ like regular traits and guard with your favorite trait-bound syntax.
-Here's a longer, more complicated example, that demonstrates the value that `dacquiri` provides
-by guarding access to the `leave_team` functionality to `Users` until they have checked both
-_attributes_ required by the `TeamMember` _entitlement_ bound.
+        // fetch the document contents with the provided document_service
+        let document = document_service.fetch_doc_contents(meta.doc_id).await?;
 
-It does not matter the order that the `try_grant_*` functions are called, that they are called
-sequentially, or that they even happened in the same function.
-```rust
-#[tokio::main]
-async fn main() -> Result<(), String> {
-    let user: User = get_user();
-    let team: Team = get_team();
-    let mut conn: DatabaseConnection = get_database_conn();
-    let mut checked_user = user
-        .try_grant::<UserIsEnabled>()?
-        .try_grant_with_resource_and_context_async::<UserIsTeamMember, _>(team, &mut conn).await?;
-    leave_my_team(&mut checked_user).await
-}
-async fn leave_my_team(user: impl TeamMember) -> Result<(), String> {
-    // you can't call `.leave_team()` if you're not
-    // a TeamMember (which requires UserIsEnabled and UserIsTeamMember)
-    user.leave_team().await
-}
-#[entitlement(UserIsEnabled, UserIsTeamMember)]
-#[async_trait]
-trait TeamMember {
-    // we capture self here because leaving the team
-    // means we're no longer a team member
-    async fn leave_team(
-        self,
-        conn: &mut DatabaseConection
-) -> Result<(), String> {
-        let user = self.get_subject();
-        // we need to specify *which* attribute's resource we want
-        let team = self.get_resource::<UserIsTeamMember, _, _>();
-        let query = escape!(
-            "DELETE FROM members WHERE uid = {} AND tid = {};",
-            user.user_id,
-            team.team_id
-        );
-        conn
-            .execute(query)
-            .await
-            .map(|_| format!("DB error"))?;
-        Ok(())
+        // return the document!
+        Ok(document)
     }
 }
 ```
-# Subjects
-The last topic that needs to be covered is about _subjects_. We mentioned them earlier; _subjects_ are the
-entities that we're administering an authorization policy against and applying access control.
-We do need to denote subjects before we can start acquiring attributes on them.
-Do mark a struct as a `Subject` we mark them with `#[derive(Subject))`
+
+Policies are defined with a collection of constraints of the form:
+
+```
+<subject entity> is <attribute> [for <resource entity>]
+```
+
+Also, notice that we use `self.get_entity` to access the `document_meta` object defined in our policy definition.
+
+Why is this important?
+
+We want to make sure that the `DocumentMeta` object we use to fetch data is the exact same object that we used to validate the access control policy. 
+
+This allows us to avoid the following kind of vulnerability:
+
 ```rust
-use dacquiri::prelude::Subject;
-#[derive(Subject)]
-pub struct AuthenticatedUser {
-    username: String,
-    session_token: String,
-    enabled: bool
+let document_meta_one = document_service.fetch_doc_metadata(doc_id_one).await?;
+let document_meta_two = document_service.fetch_doc_metadata(doc_id_two).await?;
+
+// checking ownership of the first document...
+if document_meta_one.owner == session.user_id {
+    // Ahh! A vulnerability!
+    // We're fetching the wrong document!
+    // This uses `document_meta_two` instead of the tested `document_meta_one`
+    let document = document_service.fetch_doc_contents(document_meta_two.doc_id).await?;
+
+    Ok(document)
+} else {
+    Err(AppError::Unauthorized)
 }
 ```
-That's it!
 
-Now you have a relatively good grasp on how `dacquiri` works and how you can use it
-to life authorization requirements into the type system.
+As long as an entity is defined in our `entities` section of the policy we can fetch it with `get_entity`. 
+
+## Using Policies
+Now that we have our document fetching method protected by a policy, how do call it?
+
+First we need to coalesce the entities we want to prove together into an `EntityProof`. This manages the entities we've added and makes it easy to fetch entities in our policies.
+
+When we add entities to our `EntityProof` we have to give them names. It's not sufficient to just rely on the type of the entity because we may need to talk about two or more entities of the same time. That's why it's important they each have distinct names. 
+
+```rust
+// coalesce our entities together
+let entities = session
+    .into_entity::<"user">()
+    .add_entity::<_, "document_metadata">(document_meta)?;
+```
+
+Next, we check if attributes are true between our entities. We can do this by calling the attribute function, by name, that we defined earlier. For example, we defined the `Owner` attribute function as `check_caller_owns_document(...)` and can call it here.
+
+```rust
+// prove `Owner` for "user" and "document_metadata"
+let proof = entities.check_caller_owns_document::<"user", "document_metadata">()?;
+```
+
+Now that we've added the check that proves `"user"` owns the document described by `"document_metadata"`, we can call our protected method!
+
+Let's see this all together.
+
+```rust
+#[get("/documents/{doc_id}")]
+async fn access_document(req: HttpRequest, session: Session, doc_id: Path<String>) -> impl Responder {
+    let document_service = req.get_document_service();
+    let doc_id = doc_id.into_inner();
+    let document_meta = document_service.fetch_doc_metadata(doc_id).await?;
+
+    // coalesce our entities
+    let entities = session
+        .into_entity::<"user">()
+        .add_entity::<_, "document_metadata">(document_meta)?;
+
+    // prove our properties
+    let proof = entities.check_caller_owns_document::<"user", "document_metadata">()?;
+
+    // call the protected function!
+    proof.fetch_document_contents(&document_service).await
+}
+```
+
+Of course you can chain all of these methods together if that makes things easier
+
+# Advanced Attributes
+Attributes aren't particularly complex (_partly as a feature_), but they do have some additional capabilities that may not be obvious.
+
+## Subject, Resource, and Context
+Attribute functions support up to three arguments.
+
+The first argument is the **subject** entity. This entity must always be present and be an immutable reference to the entity type. 
+
+```rust
+#[attribute(Enabled)]
+mod enabled {
+    #[attribute]
+    // 'User' is the subject entity type
+    fn check_user_enabled(user: &User) -> AttributeResult<AppError> {
+        // check user is enabled
+        (user.enabled)
+            .then_some(())
+            .ok_or(AppError::Unauthorized)
+    }
+}
+```
+
+The second, optional, argument is the **resource** entity. There really isn't a meaningful different between the *subject* and *resource* except where they go in the policy constraint expression. Similar to *subject* entities, *resource* entities must also be an immutable reference to their entity type.
+
+The final possible argument to an attribute function is the **context**. This is any object (_or collection of objects_) that help you verify an attribute. A canonical example of a *context* object is a database connection. Without this connection, you may not be able to query a database and validate some property is true. 
+
+A context object _can_ be supplied without an associated resource and may or may not be a reference. If you wish to define an attribute function with only a *subject* entity and a *context* object, set the *resource* entity type to `&()` and it will be ignored. 
+
+```rust
+#[attribute(Adult)]
+mod adult {
+    #[attribute]
+    fn check_user_is_adult(user: &User, _: &(), db: &DbConnection) -> AttributeResult<AppError> {
+        const AGE_ADULT: u32 = 18;
+        // use db to query user's current age
+        // we'd *probably* expect this to be a property on `User`, but this is for the sake of the example
+        let age = db.query_user_age(user.user_id)?;
+
+        if age >= AGE_ADULT {
+            Ok(())
+        } else {
+            Err(AppError::Unauthorized)
+        }
+    }
+}
+```
+
+## Async Attributes
+Attributes can be `async`! There's nothing special you need to do aside from writing the function to be `async`. This is especially useful with *context* objects like database connections or a grpc service. 
+
+```rust
+#[attribute(Member)]
+mod member {
+    #[attribute]
+    async fn check_user_is_member_of_team(user: &User, team: &Team, service: &TeamService) -> AttributeResult<AppError> {
+        // attempt to fetch the membership record of this user
+        let membership: Option<Membership> = service.get_membership(user.user_id, team.team_id).await?;
+
+        if membership.is_some() {
+            Ok(())
+        } else {
+            Err(AppError::UserNotAMember)
+        }
+    }
+}
+```
+
+When you go to test this attribute elsewhere in your code, it'll be an async method that you must `await` on as expected.
+
+## Attribute Name Reuse
+Attributes support defining multiple attribute functions allowing for different types of entities to prove a particular attribute. Attributes are still scoped to particular subject and resource entity types, preventing attribute confusion. 
+
+The main benefit to allowing multiple attribute functions is that different entities can use the same attribute name to describe a relationship. For example, defining the following constraint is non-ideal from a readability perspective.
+
+```rust
+#[policy(
+    entities = (
+        user: User,
+        team: Team,
+    ),
+    guard = (
+        user is UserEnabled,
+        team is TeamEnabled,
+    )
+)]
+pub trait Something {}
+```
+
+By defining multiple attribute functions, we can reuse the attribute `Enabled` but have strong, type-checked proves for each entity type.
+
+```rust
+#[attribute(Enabled)]
+mod enabled {
+    #[attribute]
+    fn check_user_is_enabled(user: &User) -> AttributeResult<AppError> {
+        (user.enabled)
+            .then_some(())
+            .ok_or(AppError::UserNotEnabled)
+    }
+
+    #[attribute]
+    fn check_team_is_enabled(team: &Team) -> AttributeResult<AppError> {
+        (team.enabled)
+            .then_some(())
+            .ok_or(AppError::TeamNotEnabled)
+    }
+}
+
+#[policy(
+    entities = (
+        user: User,
+        team: Team,
+    ),
+    // this reads much better!
+    guard = (
+        user is Enabled,
+        team is Enabled,
+    )
+)]
+pub trait Something {}
+```
+
+# Advanced Policies
+## Dependent Policies
+In addition to using attributes, guards can depend on other policies by using the following syntax:
+
+```
+<policy_name>(<entities>)
+```
+
+For example, if we created a new policy that relied on our previous `DocumentOwnerPolicy`, we might define the guard in the following way:
+
+```rust
+#[policy(
+    entities = (
+        user: Session,
+        document_metadata: DocumentMeta
+    ),
+    guard = (
+        user is OtherAttribute,
+        DocumentOwnerPolicy(user, document_metadata)
+    )
+)]
+pub trait OtherPolicy {
+    // prints document contents to stdout
+    async fn do_stuff(&self, document_service: &DocumentService) -> Result<(), AppError> {
+        // we can call `fetch_document_contents` because we're guaranteed to satisfy `DocumentOwnerPolicy`!
+        let document = self.fetch_document_contents(document_service).await?;
+
+        println!("Document contents: {}", document);
+    }
+}
+```
+
+Any methods inside of `OtherPolicy` would be able to call into methods defined by `DocumentOwnerPolicy`. This is true even if we don't explicitly depend on `DocumentOwnerPolicy` in our `guard` statement. As long as all of the policy constraints are known to be satisfied, our method can call methods guarded by other policies.
+
+## Multiple Guards
+Sometimes there are multiple contexts in which someone should be able to call into a given method. In our example so far, the caller must prove that a user owns a particular document before retriving its contents. But what if we had a background service that indexed documents for searching? How would that service fetch the document contents without a user session?
+
+Policies support multiple guard conditions for such a case. Each guard condition is treated as a branch of an `OR` statement meaning that as long as one of the branches is satisfied, the caller can invoke the policy protected methods. 
+
+Let's reinvision our `DocumentOwnerPolicy` to allow for a background service to access the document contents.
+
+```rust 
+#[policy(
+    entities = (
+        user: Session,
+        service: ServiceSession,
+        document_metadata: DocumentMeta
+    ),
+    guard = (
+        user is Owner for document_metadata
+    ),
+    guard = (
+        service is Valid
+    )
+)]
+pub trait DocumentOwnerPolicy {
+    async fn fetch_document_contents(&self, document_service: &DocumentService) -> Result<Document, AppError> {
+        // grab the DocumentMeta from our policy definition
+        let meta: &DocumentMeta = self.get_entity::<_, document_metadata>();
+
+        // fetch the document contents with the provided document_service
+        let document = document_service.fetch_doc_contents(meta.doc_id).await?;
+
+        // return the document!
+        Ok(document)
+    }
+}
+```
+
+Unfortunately, there are two major restrictions here.
+
+The first is that if a policy uses multiple guards, no guard may use dependent policies. If it's important that your multi-guard policy be able to call into other policies, you can still require all of the attributes required but cannot depend on the policy itself.
+
+The second restriction is that Dacquiri will require that all described entities are present for the policy to be satisified. That means that despite the fact that we only need a `ServiceSession` to be `Valid` to call into `fetch_document_contents`, we'll need to supply a user's `Session` regardless.
+
+To avoid that problem Dacquiri supports *optional* entities!
+
+## Optional Entities
+Optional entities allow us to relax the requirement that described entities are present for a policy to be satisfied. To mark an entity as optional, add a `?` to the end of the type. 
+
+Taking our previous example, we can mark the `ServiceSession` and `Session` types as optional!
+
+```rust 
+#[policy(
+    // 'user' and 'service' are now optional types!
+    entities = (
+        user: Session?,
+        service: ServiceSession?,
+        document_metadata: DocumentMeta
+    ),
+    guard = (
+        user is Owner for document_metadata
+    ),
+    guard = (
+        service is Valid
+    )
+)]
+pub trait DocumentOwnerPolicy {
+    async fn fetch_document_contents(&self, document_service: &DocumentService) -> Result<Document, AppError> {
+        // grab the DocumentMeta from our policy definition
+        let meta: &DocumentMeta = self.get_entity::<_, document_metadata>();
+
+        // fetch the document contents with the provided document_service
+        let document = document_service.fetch_doc_contents(meta.doc_id).await?;
+
+        // return the document!
+        Ok(document)
+    }
+}
+```
+
+One important thing to note about optional entities is that any entity marked optional will not be able to be retrieved using `self.get_entity`, as this method uses compile-time checks to validate the entity is present. 
+
+To access an optional entity, `self.try_get_entity` may be used. 
