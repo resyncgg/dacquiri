@@ -263,7 +263,7 @@ The main benefit to allowing multiple attribute functions is that different enti
 pub trait Something {}
 ```
 
-By defining multiple attribute functions, we can reuse the attribute `Enabled` but have strong, type-checked proves for each entity type.
+By defining multiple attribute functions, we can reuse the attribute `Enabled` but have strong, type-checked attribute proofs for each entity type.
 
 ```rust
 #[attribute(Enabled)]
