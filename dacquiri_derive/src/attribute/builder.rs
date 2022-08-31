@@ -147,7 +147,7 @@ impl ToTokens for AttributeBuilder {
                     mod #module_identity {
                         use super::#permission_identity;
 
-                        #[async_trait::async_trait]
+                        #[dacquiri::async_trait::async_trait]
                         pub trait #proving_function_trait {
                             #attr_proving_funcs
                         }
@@ -162,7 +162,7 @@ impl ToTokens for AttributeBuilder {
             },
             None => {
                 tokens.extend(quote! {
-                    #[async_trait::async_trait]
+                    #[dacquiri::async_trait::async_trait]
                     pub trait #proving_function_trait {
                         #attr_proving_funcs
                     }
