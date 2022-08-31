@@ -12,6 +12,8 @@
 
 #![doc = include_str!("../README.md")]
 
+pub extern crate async_trait;
+
 mod error;
 mod attribute;
 mod chain;

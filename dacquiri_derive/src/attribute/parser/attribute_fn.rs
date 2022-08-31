@@ -303,7 +303,7 @@ impl ToTokens for AttributeFn {
 
         if self.is_async {
             tokens.extend(quote!{
-                #[async_trait::async_trait]
+                #[dacquiri::async_trait::async_trait]
                 impl dacquiri::prelude::AsyncAttribute for #attribute_identity<#subject_type, #resource_type> {
                     async fn test_async<'ctx>(#subject_var: &Self::Subject, #resource_var: &Self::Resource, #context_var: Self::Context<'ctx>) -> dacquiri::prelude::AttributeResult<Self::Error> #attribute_check_block
                 }
