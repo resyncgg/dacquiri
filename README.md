@@ -43,18 +43,11 @@ use dacquiri::prelude::*;
 
 // define the attribute
 #[attribute(Owner)]
-mod owner {
-    // define a method of testing for that attribute
-    #[attribute]
-    fn check_caller_owns_document(
-        session: &Session,
-        document_meta: &DocumentMeta
-    ) -> AttributeResult<AppError> {
-        // check user owns document
-        (session.user_id == document_meta.owner)
-            .then_some(())
-            .ok_or(AppError::Unauthorized)
-    }
+fn check_caller_owns_document(session: &Session, document_meta: &DocumentMeta) -> AttributeResult<AppError> {
+    // check user owns document
+    (session.user_id == document_meta.owner)
+        .then_some(())
+        .ok_or(AppError::Unauthorized)
 }
 ```
 
@@ -185,15 +178,12 @@ The first argument is the **subject** entity. This entity must always be present
 
 ```rust
 #[attribute(Enabled)]
-mod enabled {
-    #[attribute]
-    // 'User' is the subject entity type
-    fn check_user_enabled(user: &User) -> AttributeResult<AppError> {
-        // check user is enabled
-        (user.enabled)
-            .then_some(())
-            .ok_or(AppError::Unauthorized)
-    }
+// 'User' is the subject entity type
+fn check_user_enabled(user: &User) -> AttributeResult<AppError> {
+    // check user is enabled
+    (user.enabled)
+        .then_some(())
+        .ok_or(AppError::Unauthorized)
 }
 ```
 
@@ -205,19 +195,16 @@ A context object _can_ be supplied without an associated resource and may or may
 
 ```rust
 #[attribute(Adult)]
-mod adult {
-    #[attribute]
-    fn check_user_is_adult(user: &User, _: &(), db: &DbConnection) -> AttributeResult<AppError> {
-        const AGE_ADULT: u32 = 18;
-        // use db to query user's current age
-        // we'd *probably* expect this to be a property on `User`, but this is for the sake of the example
-        let age = db.query_user_age(user.user_id)?;
+fn check_user_is_adult(user: &User, _: &(), db: &DbConnection) -> AttributeResult<AppError> {
+    const AGE_ADULT: u32 = 18;
+    // use db to query user's current age
+    // we'd *probably* expect this to be a property on `User`, but this is for the sake of the example
+    let age = db.query_user_age(user.user_id)?;
 
-        if age >= AGE_ADULT {
-            Ok(())
-        } else {
-            Err(AppError::Unauthorized)
-        }
+    if age >= AGE_ADULT {
+        Ok(())
+    } else {
+        Err(AppError::Unauthorized)
     }
 }
 ```
@@ -227,17 +214,14 @@ Attributes can be `async`! There's nothing special you need to do aside from wri
 
 ```rust
 #[attribute(Member)]
-mod member {
-    #[attribute]
-    async fn check_user_is_member_of_team(user: &User, team: &Team, service: &TeamService) -> AttributeResult<AppError> {
-        // attempt to fetch the membership record of this user
-        let membership: Option<Membership> = service.get_membership(user.user_id, team.team_id).await?;
+async fn check_user_is_member_of_team(user: &User, team: &Team, service: &TeamService) -> AttributeResult<AppError> {
+    // attempt to fetch the membership record of this user
+    let membership: Option<Membership> = service.get_membership(user.user_id, team.team_id).await?;
 
-        if membership.is_some() {
-            Ok(())
-        } else {
-            Err(AppError::UserNotAMember)
-        }
+    if membership.is_some() {
+        Ok(())
+    } else {
+        Err(AppError::UserNotAMember)
     }
 }
 ```
@@ -263,11 +247,13 @@ The main benefit to allowing multiple attribute functions is that different enti
 pub trait Something {}
 ```
 
-By defining multiple attribute functions, we can reuse the attribute `Enabled` but have strong, type-checked attribute proofs for each entity type.
+By defining multiple attribute functions, we can reuse the attribute name `Enabled` but have strong, type-checked attribute proofs for each entity type. To define multiple attribute functions, we annotate a module declaration and place all of our attribute functions inside. We then annotate the attribute functions with `#[attribute]`.
 
 ```rust
 #[attribute(Enabled)]
 mod enabled {
+    use crate::{User, Team, AppError};
+    
     #[attribute]
     fn check_user_is_enabled(user: &User) -> AttributeResult<AppError> {
         (user.enabled)
