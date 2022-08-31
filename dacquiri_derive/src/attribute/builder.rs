@@ -30,7 +30,7 @@ pub enum GrantError {
 }
 
 pub struct AttributeBuilder {
-    module_name: Ident,
+    module_name: Option<Ident>,
     attribute_name: Path,
     attribute_fns: Vec<AttributeFn>,
     other_items: Vec<Item>,
@@ -40,7 +40,7 @@ impl TryFrom<(AttributeArgs, ItemMod)> for AttributeBuilder {
     type Error = GrantError;
 
     fn try_from((mut args, attribute_mod): (AttributeArgs, ItemMod)) -> Result<Self, Self::Error> {
-        let module_name = attribute_mod.ident;
+        let module_name = Some(attribute_mod.ident);
 
         // #[attribute(AccountEnabled)] => AccountEnabled
         let attribute_name = match args.pop() {
@@ -74,6 +74,27 @@ impl TryFrom<(AttributeArgs, ItemMod)> for AttributeBuilder {
     }
 }
 
+impl TryFrom<(AttributeArgs, ItemFn)> for AttributeBuilder {
+    type Error = GrantError;
+
+    fn try_from((mut args, item_fn): (AttributeArgs, ItemFn)) -> Result<Self, Self::Error> {
+        // #[attribute(AccountEnabled)] => AccountEnabled
+        let attribute_name = match args.pop() {
+            Some(NestedMeta::Meta(Meta::Path(bound))) => bound,
+            _ => return Err(GrantError::MissingGrantName)
+        };
+
+        let attribute_fns = vec![AttributeFn::try_from((attribute_name.clone(), item_fn.clone()))?];
+
+        Ok(AttributeBuilder {
+            module_name: None,
+            attribute_name,
+            attribute_fns,
+            other_items: Vec::new()
+        })
+    }
+}
+
 /**
     Validates that a given ItemFn is a proper attribute fn definition.
 
@@ -94,7 +115,6 @@ fn is_attribute_fn(item_fn: &ItemFn) -> bool {
 
 impl ToTokens for AttributeBuilder {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let module_identity = &self.module_name;
         let permission_identity = &self.attribute_name;
         let proving_function_name = format!("{}AttrExt", permission_identity.to_token_stream().to_string());
         let proving_function_trait = Ident::new(&proving_function_name, Span::call_site());
@@ -119,23 +139,41 @@ impl ToTokens for AttributeBuilder {
             mod_elems.extend(item.to_token_stream());
         }
 
-        tokens.extend(quote! {
-            pub use #module_identity::#proving_function_trait;
+        match &self.module_name {
+            Some(module_identity) => {
+                tokens.extend(quote! {
+                    pub use #module_identity::#proving_function_trait;
 
-            mod #module_identity {
-                use super::#permission_identity;
+                    mod #module_identity {
+                        use super::#permission_identity;
 
-                #[async_trait::async_trait]
-                pub trait #proving_function_trait {
-                    #attr_proving_funcs
-                }
+                        #[async_trait::async_trait]
+                        pub trait #proving_function_trait {
+                            #attr_proving_funcs
+                        }
 
-                impl<T> #proving_function_trait for T
-                where
-                    T: dacquiri::prelude::ConstraintT + Sized {}
+                        impl<T> #proving_function_trait for T
+                        where
+                            T: dacquiri::prelude::ConstraintT + Sized {}
 
-                #mod_elems
+                        #mod_elems
+                    }
+                });
+            },
+            None => {
+                tokens.extend(quote! {
+                    #[async_trait::async_trait]
+                    pub trait #proving_function_trait {
+                        #attr_proving_funcs
+                    }
+
+                    impl<T> #proving_function_trait for T
+                    where
+                        T: dacquiri::prelude::ConstraintT + Sized {}
+
+                    #mod_elems
+                });
             }
-        })
+        }
     }
 }
