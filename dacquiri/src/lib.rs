@@ -3,12 +3,10 @@
 #![feature(adt_const_params)]
 #![feature(associated_type_defaults)]
 #![feature(generic_arg_infer)]
-#![feature(generic_associated_types)]
 #![feature(trait_alias)]
 #![feature(marker_trait_attr)]
 #![feature(negative_impls)]
 #![feature(auto_traits)]
-#![feature(rustc_attrs)]
 
 #![doc = include_str!("../README.md")]
 
