@@ -3,26 +3,12 @@ use crate::chain::{ConstraintChain, EntityTag};
 use crate::DEFAULT_ELEMENT_TAG;
 use crate::store::EntityProof;
 
-#[rustc_on_unimplemented(
-    on(
-        RTAG = "\"___\"",
-        message = "caller hasn't proven that the subject entity maintains attribute `{Attr}`",
-        label = "help: try proving the subject entity has attribute `{Attr}` with `.prove()`",
-    ),
-    message = "caller hasn't proven that the entities {STAG} and {RTAG} maintain attribute `{Attr}`",
-    label = "help: try proving {STAG} and {RTAG} have attribute `{Attr}` with `.prove_with_resource::<{Attr}, {STAG}, {RTAG}>()`",
-)]
 #[marker] pub trait HasConstraint<Attr, const STAG: EntityTag = DEFAULT_ELEMENT_TAG, const RTAG: EntityTag = DEFAULT_ELEMENT_TAG>
     where
         Attr: BaseAttribute {}
 
 #[marker] pub trait HasEntity<const TAG: EntityTag> {}
 
-#[rustc_on_unimplemented(
-    message = "missing an entity named `{TAG}` of type `{EntityType}`",
-    label = "help: try adding an entity with `.add_entity::<{EntityType}, {TAG}>(...)`",
-
-)]
 #[marker] pub trait HasEntityWithType<const TAG: EntityTag, EntityType> {}
 
 pub trait ShedNext<const TAG: EntityTag, EntityType, Next> {
