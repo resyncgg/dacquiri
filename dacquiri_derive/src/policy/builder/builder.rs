@@ -92,17 +92,20 @@ impl ToTokens for PolicyBuilder {
         });
 
         // Prove EntityProof<_, _, MARKER> => MARKER
-        tokens.extend(quote! {
-            #[allow(non_upper_case_globals)]
-            impl<
-                Next,
-                EntityType,
-                #policy_const_generics_definition,
-                const TAG: EntityTag
-            > #policy_marker_ident #policy_const_generics_invocation for EntityProof<TAG, EntityType, Next>
-                where
-                    Next: #policy_marker_ident #policy_const_generics_invocation {}
-        });
+        #[cfg(feature = "unstable_entity_proof_inheritance")]
+        {
+            tokens.extend(quote! {
+                #[allow(non_upper_case_globals)]
+                impl<
+                    Next,
+                    EntityType,
+                    #policy_const_generics_definition,
+                    const TAG: EntityTag
+                > #policy_marker_ident #policy_const_generics_invocation for EntityProof<TAG, EntityType, Next>
+                    where
+                        Next: #policy_marker_ident #policy_const_generics_invocation {}
+            });
+        }
 
         /*
             The value of this implementation is that it allows policies with multiple guards
@@ -128,7 +131,7 @@ impl ToTokens for PolicyBuilder {
             figuring out what properties need to be re-proved and proving them will work too. Lastly,
             changing the `impl MyPolicy` to include the required HasConstraint will let Dacquiri implement the policy trait appropriately
          */
-        // todo: Unstable! When this stops causing ICE, turn on by default
+        // todo: Unstable! When this stops causing ICE (or compiler errors with marker traits), turn on by default
         #[cfg(feature = "unstable_policy_inheritance")]
         {
             // Prove ConstraintChain<_, _, _, MARKER> => MARKER

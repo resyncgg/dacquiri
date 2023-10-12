@@ -1,9 +1,7 @@
 #![deny(warnings)]
 #![allow(incomplete_features)]
-#![feature(generic_associated_types)]
 #![feature(adt_const_params)]
 #![feature(generic_arg_infer)]
-#![feature(rustc_attrs)]
 #![feature(marker_trait_attr)]
 
 /// In this demo, we have a bank, a bank admin, and two accounts at the bank.

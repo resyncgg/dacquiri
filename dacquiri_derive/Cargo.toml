@@ -1,6 +1,6 @@
 [package]
 name = "dacquiri_derive"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 description = "Derive macro support for dacquiri"
 license = "MIT"
@@ -11,6 +11,9 @@ license = "MIT"
 default = []
 # Enables resolving `ConstraintChain<_, _, _, POLICY_MARKER> => POLICY_MARKER` -- highly unstable
 unstable_policy_inheritance = []
+# Enables resolving `EntityProof<_, _, MARKER_TRAIT>` => `MARKER_TRAIT`
+# This broke sometime between nightly-2023-01-01 and nightly-2023-04-20 :(
+unstable_entity_proof_inheritance = []
 
 [lib]
 name = "dacquiri_derive"
